@@ -1,7 +1,7 @@
 
 'use client';
 
-import { initializeApp, getApps, FirebaseApp, FirebaseOptions } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
@@ -22,8 +22,21 @@ export function initializeFirebase() {
   }
   
   // Initialize services only once
-  if (!auth) auth = getAuth(app);
-  if (!db) db = getFirestore(app);
+  if (!auth) {
+    try {
+      auth = getAuth(app);
+    } catch (e) {
+      console.error("Failed to initialize Firebase Auth:", e);
+    }
+  }
+  
+  if (!db) {
+    try {
+      db = getFirestore(app);
+    } catch (e) {
+      console.error("Failed to initialize Firestore:", e);
+    }
+  }
   
   return { app, auth, db };
 }

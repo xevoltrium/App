@@ -81,7 +81,7 @@ export default function Home() {
         
         <Card className="w-full max-w-md shadow-xl border-none">
           <CardHeader>
-            <CardTitle className="text-2xl font-headline font-bold text-center">Willkommen zurück</CardTitle>
+            <CardTitle className="text-2xl font-headline font-bold text-center">Willkommen</CardTitle>
             <CardDescription className="text-center">Wähle deine bevorzugte Art der Anmeldung</CardDescription>
           </CardHeader>
           <CardContent>
