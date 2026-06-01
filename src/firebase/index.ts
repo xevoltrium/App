@@ -17,16 +17,17 @@ export function initializeFirebase() {
     app = getApps()[0];
   }
   
-  // Defensive initialization to prevent 'invalid-api-key' crashes from blocking the UI
+  // Initialize services with extreme caution to prevent "invalid-api-key" from blocking the UI
   if (!auth) {
     try {
-      if (firebaseConfig.apiKey) {
+      // Only try to getAuth if there's something that looks like an API key
+      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "" && !firebaseConfig.apiKey.includes("YOUR_")) {
         auth = getAuth(app);
       } else {
-        console.warn("Firebase API Key is missing. Auth will be disabled.");
+        console.warn("Firebase Auth: No valid API Key found. Authentication features will be disabled.");
       }
     } catch (e) {
-      console.warn("Firebase Auth initialization skipped/failed:", e);
+      console.error("Firebase Auth initialization failed:", e);
     }
   }
   
@@ -34,7 +35,7 @@ export function initializeFirebase() {
     try {
       db = getFirestore(app);
     } catch (e) {
-      console.warn("Firestore initialization failed:", e);
+      console.error("Firestore initialization failed:", e);
     }
   }
   

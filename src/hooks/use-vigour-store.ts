@@ -34,7 +34,7 @@ export function useVigourStore() {
   const { data: plans, loading: plansLoading } = useCollection<WorkoutPlan>(plansQuery as any);
 
   const checkAuth = () => {
-    if (!auth) throw new Error("Firebase Auth ist nicht verfügbar. Bitte prüfe deine API-Konfiguration im Firebase Console.");
+    if (!auth) throw new Error("Firebase Auth ist nicht verfügbar. Bitte prüfe deine API-Konfiguration.");
   };
 
   const loginWithGoogle = async () => {
