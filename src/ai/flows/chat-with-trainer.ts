@@ -12,6 +12,7 @@ const ChatWithTrainerInputSchema = z.object({
     fitnessGoal: z.string(),
     bmiLevel: z.string(),
   }).optional(),
+  apiKey: z.string().optional().describe('Optional API key provided by the user.'),
 });
 
 const ChatWithTrainerOutputSchema = z.object({
@@ -43,6 +44,8 @@ const chatWithTrainerFlow = ai.defineFlow({
   inputSchema: ChatWithTrainerInputSchema,
   outputSchema: ChatWithTrainerOutputSchema,
 }, async (input) => {
+  // If an API key is provided, we can't easily swap it in Genkit 1.x without re-initializing,
+  // but we pass it along for potential middleware or log auditing.
   const { output } = await prompt(input);
   if (!output) throw new Error('No response from AI');
   return output;

@@ -15,6 +15,7 @@ const GenerateSpecializedWorkoutPlanInputSchema = z.object({
   bmiLevel: z.enum(['underweight', 'normal', 'overweight', 'obese']).describe("The user's BMI category."),
   availableEquipment: z.array(z.string()).describe("List of available workout equipment (e.g., 'dumbbells', 'resistance bands', 'pull-up bar', 'gym access', 'no equipment')."),
   specializationRequest: z.string().describe("User's specific request for specialized training (e.g., 'focus on lower back strength', 'HIIT for fat loss', 'increase bicep mass', 'yoga for flexibility')."),
+  apiKey: z.string().optional().describe('Optional API key provided by the user.'),
 });
 export type GenerateSpecializedWorkoutPlanInput = z.infer<typeof GenerateSpecializedWorkoutPlanInputSchema>;
 

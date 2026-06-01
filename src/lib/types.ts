@@ -8,6 +8,7 @@ export interface UserProfile {
   specialPreferences?: string;
   isBoarded: boolean;
   role: 'user' | 'admin';
+  geminiApiKey?: string;
 }
 
 export interface WorkoutExercise {
