@@ -18,7 +18,6 @@ export function initializeFirebase() {
   }
   
   // Defensive initialization to prevent 'invalid-api-key' crashes
-  // only initialize services if a key is present
   if (!auth && firebaseConfig.apiKey && firebaseConfig.apiKey !== "") {
     try {
       auth = getAuth(app);

@@ -27,11 +27,11 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
           ...doc.data(),
           id: doc.id,
         }));
-        setData(items);
+        setData(items as (T & { id: string })[]);
         setLoading(false);
       },
       (err) => {
-        console.error(err);
+        console.error("Firestore useCollection Error:", err);
         setError(err);
         setLoading(false);
       }

@@ -23,11 +23,11 @@ export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
     const unsubscribe = onSnapshot(
       ref,
       (snapshot: DocumentSnapshot<T>) => {
-        setData(snapshot.exists() ? { ...snapshot.data(), id: snapshot.id } : null);
+        setData(snapshot.exists() ? { ...snapshot.data(), id: snapshot.id } as any : null);
         setLoading(false);
       },
       (err) => {
-        console.error(err);
+        console.error("Firestore useDoc Error:", err);
         setError(err);
         setLoading(false);
       }
