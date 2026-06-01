@@ -5,6 +5,7 @@ import { UserProfile, WorkoutPlan, ChatMessage, BMICategory } from '@/lib/types'
 import { generateSpecializedWorkoutPlan } from '@/ai/flows/generate-specialized-workout-plan';
 import { chatWithTrainer } from '@/ai/flows/chat-with-trainer';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
