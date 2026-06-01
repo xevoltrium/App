@@ -4,8 +4,8 @@ import './globals.css';
 import { FirebaseProvider } from '@/firebase/provider';
 
 export const metadata: Metadata = {
-  title: 'VigourAI - Personalized AI Fitness',
-  description: 'AI-powered personalized workout plans for a healthier you.',
+  title: 'VigourAI - Personalisierte KI Fitness',
+  description: 'KI-gestützte personalisierte Trainingspläne für ein gesünderes Leben.',
 };
 
 export default function RootLayout({

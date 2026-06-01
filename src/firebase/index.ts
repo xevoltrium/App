@@ -20,7 +20,11 @@ export function initializeFirebase() {
   // Defensive initialization to prevent 'invalid-api-key' crashes from blocking the UI
   if (!auth) {
     try {
-      auth = getAuth(app);
+      if (firebaseConfig.apiKey) {
+        auth = getAuth(app);
+      } else {
+        console.warn("Firebase API Key is missing. Auth will be disabled.");
+      }
     } catch (e) {
       console.warn("Firebase Auth initialization skipped/failed:", e);
     }
