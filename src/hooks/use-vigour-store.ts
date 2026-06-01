@@ -29,6 +29,13 @@ export function useVigourStore() {
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
   };
 
+  const updateUser = (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(updatedUser));
+  };
+
   const savePlans = (newPlans: WorkoutPlan[]) => {
     setPlans(newPlans);
     localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(newPlans));
@@ -63,6 +70,7 @@ export function useVigourStore() {
     plans,
     loading,
     saveUser,
+    updateUser,
     savePlans,
     deletePlan,
     logout,
