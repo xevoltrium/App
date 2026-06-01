@@ -12,21 +12,19 @@ let db: Firestore;
 
 export function initializeFirebase() {
   if (getApps().length === 0) {
-    // Basic validation to avoid SDK crash with empty API key
-    if (!firebaseConfig.apiKey) {
-      console.warn("Firebase API Key is missing. Check your environment variables.");
-    }
     app = initializeApp(firebaseConfig);
   } else {
     app = getApps()[0];
   }
   
-  // Initialize services only once
+  // Initialize services only if config is valid to prevent crashes
   if (!auth) {
     try {
-      auth = getAuth(app);
+      if (firebaseConfig.apiKey) {
+        auth = getAuth(app);
+      }
     } catch (e) {
-      console.error("Failed to initialize Firebase Auth:", e);
+      console.error("Firebase Auth initialization failed:", e);
     }
   }
   
@@ -34,7 +32,7 @@ export function initializeFirebase() {
     try {
       db = getFirestore(app);
     } catch (e) {
-      console.error("Failed to initialize Firestore:", e);
+      console.error("Firestore initialization failed:", e);
     }
   }
   
