@@ -1,13 +1,16 @@
 "use client"
 
 import { useState } from 'react';
-import { UserProfile, WorkoutPlan, DailyWorkout } from '@/lib/types';
+import { UserProfile, WorkoutPlan, ChatMessage } from '@/lib/types';
 import { generateSpecializedWorkoutPlan } from '@/ai/flows/generate-specialized-workout-plan';
+import { chatWithTrainer } from '@/ai/flows/chat-with-trainer';
 import { Button } from '@/components/ui/button';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Loader2, LogOut, LayoutDashboard, UserCircle, Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Plus, Loader2, LogOut, LayoutDashboard, UserCircle, Settings, MessageSquare, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export function UserDashboard({ 
@@ -24,6 +27,12 @@ export function UserDashboard({
   onLogout: () => void;
 }) {
   const [generating, setGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'plan' | 'chat'>('plan');
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
 
   const createPlan = async () => {
     setGenerating(true);
@@ -58,10 +67,38 @@ export function UserDashboard({
       toast({ title: "Plan erstellt!", description: "Dein neuer KI-Plan ist bereit." });
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Fehler", description: "Plan konnte nicht generiert werden." });
+      toast({ variant: "destructive", title: "Fehler", description: "Plan konnte nicht generiert werden. Bitte versuche es später erneut." });
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || sendingChat) return;
+    
+    const userMsg: ChatMessage = { role: 'user', content: chatInput };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput("");
+    setSendingChat(true);
+
+    try {
+      const result = await chatWithTrainer({
+        message: chatInput,
+        userProfile: {
+          fitnessGoal: user.fitnessGoal,
+          bmiLevel: user.bmiLevel
+        }
+      });
+      setChatMessages(prev => [...prev, { role: 'ai', content: result.response }]);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Fehler", description: "KI Trainer ist gerade nicht erreichbar." });
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const handleNavClick = (tab: 'plan' | 'chat') => {
+    setActiveTab(tab);
   };
 
   const activePlan = plans[0];
@@ -85,90 +122,156 @@ export function UserDashboard({
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-10 max-w-5xl">
-        <section className="bg-primary/5 rounded-3xl p-8 border border-primary/10 flex flex-col md:flex-row gap-8 items-center justify-between overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
-          
-          <div className="space-y-4 max-w-lg">
-            <h2 className="text-3xl font-headline font-bold leading-tight">Bereit für dein nächstes Level?</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Basierend auf deinem Ziel <span className="text-primary font-bold">"{user.fitnessGoal}"</span> und deinem BMI-Status haben wir deinen optimalen Pfad berechnet.
-            </p>
-            {!activePlan && (
-              <Button 
-                onClick={createPlan} 
-                disabled={generating}
-                className="bg-accent text-accent-foreground font-bold hover:bg-accent/90 h-12 px-8 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
-              >
-                {generating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
-                KI-Trainingsplan generieren
-              </Button>
-            )}
-          </div>
-
-          {activePlan && (
-            <div className="w-full md:w-64 space-y-4 bg-white p-6 rounded-2xl shadow-sm border">
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span>Dein Fortschritt</span>
-                <span className="text-primary">{Math.round(progress)}%</span>
+        {activeTab === 'plan' ? (
+          <>
+            <section className="bg-primary/5 rounded-3xl p-8 border border-primary/10 flex flex-col md:flex-row gap-8 items-center justify-between overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
+              
+              <div className="space-y-4 max-w-lg">
+                <h2 className="text-3xl font-headline font-bold leading-tight">Bereit für dein nächstes Level?</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Basierend auf deinem Ziel <span className="text-primary font-bold">"{user.fitnessGoal}"</span> haben wir deinen optimalen Pfad berechnet.
+                </p>
+                {!activePlan && (
+                  <Button 
+                    onClick={createPlan} 
+                    disabled={generating}
+                    className="bg-accent text-accent-foreground font-bold hover:bg-accent/90 h-12 px-8 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  >
+                    {generating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                    KI-Trainingsplan generieren
+                  </Button>
+                )}
               </div>
-              <Progress value={progress} className="h-3" />
-              <p className="text-xs text-muted-foreground text-center">
-                {completedCount} von {activePlan.dailyWorkouts.length} Einheiten geschafft
-              </p>
-            </div>
-          )}
-        </section>
 
-        {generating && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-            {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-80 w-full rounded-2xl" />
-            ))}
-          </div>
-        )}
+              {activePlan && (
+                <div className="w-full md:w-64 space-y-4 bg-white p-6 rounded-2xl shadow-sm border">
+                  <div className="flex justify-between items-center text-sm font-bold">
+                    <span>Dein Fortschritt</span>
+                    <span className="text-primary">{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-3" />
+                  <p className="text-xs text-muted-foreground text-center">
+                    {completedCount} von {activePlan.dailyWorkouts.length} Einheiten geschafft
+                  </p>
+                </div>
+              )}
+            </section>
 
-        {activePlan && !generating && (
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-headline font-bold">{activePlan.title}</h3>
-              <Button variant="outline" size="sm" onClick={createPlan} disabled={generating} className="text-primary border-primary hover:bg-primary/5">
-                Plan aktualisieren
-              </Button>
+            {generating && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-80 w-full rounded-2xl" />
+                ))}
+              </div>
+            )}
+
+            {activePlan && !generating && (
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-headline font-bold">{activePlan.title}</h3>
+                  <Button variant="outline" size="sm" onClick={createPlan} disabled={generating} className="text-primary border-primary hover:bg-primary/5">
+                    Plan aktualisieren
+                  </Button>
+                </div>
+                <p className="text-muted-foreground max-w-2xl">{activePlan.description}</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {activePlan.dailyWorkouts.map((workout, idx) => (
+                    <WorkoutCard 
+                      key={idx} 
+                      index={idx}
+                      workout={workout} 
+                      onComplete={(dayIdx) => onMarkComplete(activePlan.id, dayIdx)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!activePlan && !generating && (
+              <div className="text-center py-20 border-2 border-dashed rounded-3xl opacity-50">
+                <LayoutDashboard className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-xl font-headline font-medium">Noch kein Trainingsplan vorhanden.</p>
+                <p className="text-muted-foreground">Klicke oben, um deine personalisierte Reise zu starten.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <section className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-headline font-bold">KI Trainer Chat</h2>
+              <p className="text-muted-foreground">Stelle Fragen zu Übungen, Ernährung oder Motivation.</p>
             </div>
-            <p className="text-muted-foreground max-w-2xl">{activePlan.description}</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activePlan.dailyWorkouts.map((workout, idx) => (
-                <WorkoutCard 
-                  key={idx} 
-                  index={idx}
-                  workout={workout} 
-                  onComplete={(dayIdx) => onMarkComplete(activePlan.id, dayIdx)}
+            <div className="bg-white border rounded-2xl shadow-sm flex flex-col h-[500px]">
+              <ScrollArea className="flex-1 p-6">
+                <div className="space-y-4">
+                  {chatMessages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-10">
+                      Keine Nachrichten. Fang einfach an zu fragen!
+                    </div>
+                  )}
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {sendingChat && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        KI denkt nach...
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              <div className="p-4 border-t flex gap-2">
+                <Input 
+                  placeholder="Frag mich etwas..." 
+                  value={chatInput} 
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                 />
-              ))}
+                <Button onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()}>
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </section>
         )}
-
-        {!activePlan && !generating && (
-          <div className="text-center py-20 border-2 border-dashed rounded-3xl opacity-50">
-            <LayoutDashboard className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-xl font-headline font-medium">Noch kein Trainingsplan vorhanden.</p>
-            <p className="text-muted-foreground">Klicke oben, um deine personalisierte Reise zu starten.</p>
-          </div>
-        )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 md:hidden z-40">
-        <button className="flex flex-col items-center gap-1 text-primary">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-40">
+        <button 
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'plan' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => handleNavClick('plan')}
+        >
           <LayoutDashboard className="w-6 h-6" />
           <span className="text-[10px] font-medium">Plan</span>
         </button>
-        <button className="flex flex-col items-center gap-1 text-muted-foreground opacity-50">
+        <button 
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => handleNavClick('chat')}
+        >
+          <MessageSquare className="w-6 h-6" />
+          <span className="text-[10px] font-medium">Chat</span>
+        </button>
+        <button 
+          className="flex flex-col items-center gap-1 text-muted-foreground opacity-50"
+          onClick={() => toast({ title: "Demnächst verfügbar", description: "Dieses Feature wird bald freigeschaltet." })}
+        >
           <UserCircle className="w-6 h-6" />
           <span className="text-[10px] font-medium">Profil</span>
         </button>
-        <button className="flex flex-col items-center gap-1 text-muted-foreground opacity-50">
+        <button 
+          className="flex flex-col items-center gap-1 text-muted-foreground opacity-50"
+          onClick={() => toast({ title: "Einstellungen", description: "In Bearbeitung." })}
+        >
           <Settings className="w-6 h-6" />
           <span className="text-[10px] font-medium">Settings</span>
         </button>

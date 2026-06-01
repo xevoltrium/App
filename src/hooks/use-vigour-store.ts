@@ -34,6 +34,11 @@ export function useVigourStore() {
     localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(newPlans));
   };
 
+  const deletePlan = (planId: string) => {
+    const updated = plans.filter(p => p.id !== planId);
+    savePlans(updated);
+  };
+
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY_USER);
     localStorage.removeItem(STORAGE_KEY_PLANS);
@@ -59,6 +64,7 @@ export function useVigourStore() {
     loading,
     saveUser,
     savePlans,
+    deletePlan,
     logout,
     markWorkoutComplete
   };

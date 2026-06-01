@@ -1,15 +1,17 @@
 "use client"
 
 import { useState } from 'react';
-import { UserProfile, WorkoutPlan, DailyWorkout } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { WorkoutPlan } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Shield, User, Edit3, Trash2, LogOut, Search, Users, Activity } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Shield, Edit3, Trash2, LogOut, Search, Users, Activity } from 'lucide-react';
 import { editAiGeneratedPlan } from '@/ai/flows/admin-edit-ai-generated-plan';
 import { toast } from '@/hooks/use-toast';
+import { useVigourStore } from '@/hooks/use-vigour-store';
 
 export function AdminDashboard({ 
   plans, 
@@ -20,20 +22,28 @@ export function AdminDashboard({
   onLogout: () => void;
   onUpdatePlans: (plans: WorkoutPlan[]) => void;
 }) {
+  const { deletePlan } = useVigourStore();
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
   const [reasoning, setReasoning] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const startEdit = (plan: WorkoutPlan) => {
     setEditingPlan(JSON.parse(JSON.stringify(plan)));
     setReasoning("");
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm("Möchtest du diesen Plan wirklich löschen?")) {
+      deletePlan(id);
+      toast({ title: "Plan gelöscht", description: "Der Trainingsplan wurde entfernt." });
+    }
+  };
+
   const handleSave = async () => {
     if (!editingPlan) return;
     setSaving(true);
     try {
-      // Simulate/Trigger the Genkit flow review
       const reviewResult = await editAiGeneratedPlan({
         planId: editingPlan.id,
         editedPlan: editingPlan,
@@ -54,6 +64,11 @@ export function AdminDashboard({
       setSaving(false);
     }
   };
+
+  const filteredPlans = plans.filter(p => 
+    p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -110,12 +125,17 @@ export function AdminDashboard({
                 <h2 className="text-2xl font-headline font-bold">Trainingspläne verwalten</h2>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Suchen..." className="pl-9 w-64 bg-white" />
+                  <Input 
+                    placeholder="Suchen..." 
+                    className="pl-9 w-64 bg-white" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {plans.map(plan => (
+                {filteredPlans.map(plan => (
                   <Card key={plan.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                       <div className="space-y-1">
@@ -129,7 +149,12 @@ export function AdminDashboard({
                         <Button variant="outline" size="sm" onClick={() => startEdit(plan)}>
                           <Edit3 className="w-4 h-4 mr-2" /> Bearbeiten
                         </Button>
-                        <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(plan.id)}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -137,9 +162,9 @@ export function AdminDashboard({
                   </Card>
                 ))}
 
-                {plans.length === 0 && (
+                {filteredPlans.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-                    Keine Pläne zur Review vorhanden.
+                    Keine Pläne gefunden.
                   </div>
                 )}
               </div>

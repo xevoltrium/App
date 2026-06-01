@@ -33,3 +33,8 @@ export interface WorkoutPlan {
   userId: string;
   createdAt: number;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'ai';
+  content: string;
+}
