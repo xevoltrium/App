@@ -1,78 +1,93 @@
-"use client"
 
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useMemo } from 'react';
+import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy, Timestamp } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { useUser, useFirestore, useAuth, useDoc, useCollection } from '@/firebase';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
 
-const STORAGE_KEY_USER = 'vigour_user_profile';
-const STORAGE_KEY_PLANS = 'vigour_workout_plans';
-
 export function useVigourStore() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user: authUser, loading: authLoading } = useUser();
+  const db = useFirestore();
+  const auth = useAuth();
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem(STORAGE_KEY_USER);
-    const savedPlans = localStorage.getItem(STORAGE_KEY_PLANS);
+  // Profile Doc
+  const profileRef = useMemo(() => 
+    (db && authUser) ? doc(db, 'users', authUser.uid) : null
+  , [db, authUser]);
+  
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(profileRef as any);
 
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    if (savedPlans) {
-      setPlans(JSON.parse(savedPlans));
-    }
-    setLoading(false);
-  }, []);
+  // Plans Collection
+  const plansQuery = useMemo(() => 
+    (db && authUser) ? query(collection(db, 'users', authUser.uid, 'plans'), orderBy('createdAt', 'desc')) : null
+  , [db, authUser]);
 
-  const saveUser = (newUser: UserProfile) => {
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+  const { data: plans, loading: plansLoading } = useCollection<WorkoutPlan>(plansQuery as any);
+
+  const loginWithGoogle = async () => {
+    if (!auth) return;
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
   };
 
-  const updateUser = (updates: Partial<UserProfile>) => {
-    if (!user) return;
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(updatedUser));
+  const logout = async () => {
+    if (!auth) return;
+    await signOut(auth);
   };
 
-  const savePlans = (newPlans: WorkoutPlan[]) => {
-    setPlans(newPlans);
-    localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(newPlans));
+  const saveUser = async (profileData: UserProfile) => {
+    if (!profileRef) return;
+    await setDoc(profileRef, {
+      ...profileData,
+      updatedAt: Date.now()
+    }, { merge: true });
   };
 
-  const deletePlan = (planId: string) => {
-    const updated = plans.filter(p => p.id !== planId);
-    savePlans(updated);
+  const updateUser = async (updates: Partial<UserProfile>) => {
+    if (!profileRef) return;
+    await updateDoc(profileRef, updates);
   };
 
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY_USER);
-    localStorage.removeItem(STORAGE_KEY_PLANS);
-    setUser(null);
-    setPlans([]);
-  };
-
-  const markWorkoutComplete = (planId: string, dayIndex: number) => {
-    const updatedPlans = plans.map(p => {
-      if (p.id === planId) {
-        const updatedDaily = [...p.dailyWorkouts];
-        updatedDaily[dayIndex] = { ...updatedDaily[dayIndex], isCompleted: true };
-        return { ...p, dailyWorkouts: updatedDaily };
-      }
-      return p;
+  const savePlan = async (plan: WorkoutPlan) => {
+    if (!db || !authUser) return;
+    const planRef = doc(collection(db, 'users', authUser.uid, 'plans'), plan.id);
+    await setDoc(planRef, {
+      ...plan,
+      userId: authUser.uid,
+      createdAt: Date.now()
     });
-    savePlans(updatedPlans);
+  };
+
+  const deletePlan = async (planId: string) => {
+    if (!db || !authUser) return;
+    const planRef = doc(db, 'users', authUser.uid, 'plans', planId);
+    await deleteDoc(planRef);
+  };
+
+  const markWorkoutComplete = async (planId: string, dayIndex: number) => {
+    if (!db || !authUser || !plans) return;
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const updatedDaily = [...plan.dailyWorkouts];
+    updatedDaily[dayIndex] = { ...updatedDaily[dayIndex], isCompleted: true };
+    
+    const planRef = doc(db, 'users', authUser.uid, 'plans', planId);
+    await updateDoc(planRef, { dailyWorkouts: updatedDaily });
   };
 
   return {
-    user,
-    plans,
-    loading,
+    user: profile,
+    authUser,
+    plans: plans || [],
+    loading: authLoading || profileLoading || plansLoading,
     saveUser,
     updateUser,
-    savePlans,
+    savePlan,
     deletePlan,
+    loginWithGoogle,
     logout,
     markWorkoutComplete
   };

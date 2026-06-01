@@ -1,0 +1,46 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Benutzerprofil-Informationen",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "fitnessGoal": { "type": "string" },
+        "bmiLevel": { "type": "string", "enum": ["underweight", "normal", "overweight", "obese"] },
+        "availableEquipment": { "type": "array", "items": { "type": "string" } },
+        "specialPreferences": { "type": "string" },
+        "isBoarded": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["name", "role", "isBoarded"]
+    },
+    "WorkoutPlan": {
+      "title": "WorkoutPlan",
+      "description": "Ein KI-generierter Trainingsplan",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dailyWorkouts": { "type": "array" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["title", "userId", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "Einzelne Benutzerprofile"
+    },
+    "/users/{userId}/plans/{planId}": {
+      "schema": "#/entities/WorkoutPlan",
+      "description": "Trainingspläne eines Benutzers"
+    }
+  }
+}
