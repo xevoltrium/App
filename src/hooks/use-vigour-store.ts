@@ -33,25 +33,29 @@ export function useVigourStore() {
 
   const { data: plans, loading: plansLoading } = useCollection<WorkoutPlan>(plansQuery as any);
 
+  const checkAuth = () => {
+    if (!auth) throw new Error("Firebase Auth ist nicht verfügbar. Bitte prüfe die API-Konfiguration.");
+  };
+
   const loginWithGoogle = async () => {
-    if (!auth) return;
+    checkAuth();
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithPopup(auth!, provider);
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    if (!auth) return;
-    await signInWithEmailAndPassword(auth, email, pass);
+    checkAuth();
+    await signInWithEmailAndPassword(auth!, email, pass);
   };
 
   const registerWithEmail = async (email: string, pass: string) => {
-    if (!auth) return;
-    await createUserWithEmailAndPassword(auth, email, pass);
+    checkAuth();
+    await createUserWithEmailAndPassword(auth!, email, pass);
   };
 
   const loginAsGuest = async () => {
-    if (!auth) return;
-    await signInAnonymously(auth);
+    checkAuth();
+    await signInAnonymously(auth!);
   };
 
   const logout = async () => {
@@ -100,11 +104,13 @@ export function useVigourStore() {
     await updateDoc(planRef, { dailyWorkouts: updatedDaily });
   };
 
+  const isStoreLoading = authLoading || (authUser && (profileLoading || plansLoading));
+
   return {
     user: profile,
     authUser,
     plans: plans || [],
-    loading: authLoading || profileLoading || plansLoading,
+    loading: !!isStoreLoading,
     saveUser,
     updateUser,
     savePlan,

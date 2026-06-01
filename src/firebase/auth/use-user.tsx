@@ -12,13 +12,19 @@ export function useUser() {
 
   useEffect(() => {
     if (!auth) {
+      // If auth is not available, we should not stay in loading state forever
       setLoading(false);
       return;
     }
-    return onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
+    }, (error) => {
+      console.error("Auth state change error:", error);
+      setLoading(false);
     });
+
+    return () => unsubscribe();
   }, [auth]);
 
   return { user, loading };
