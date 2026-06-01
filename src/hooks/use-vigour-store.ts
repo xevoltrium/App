@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
 
 const USERS_KEY = 'vigour_users_v1';
 const CURRENT_USER_KEY = 'vigour_active_session';
 
-// Shared state for all hook instances
+// Globaler Status, der über alle Instanzen des Hooks geteilt wird
 interface StoreState {
   currentUser: string | null;
   userProfile: UserProfile | null;
@@ -25,7 +25,8 @@ let globalState: StoreState = {
 const listeners = new Set<(s: StoreState) => void>();
 
 function notify() {
-  listeners.forEach(l => l({ ...globalState }));
+  const stateCopy = { ...globalState };
+  listeners.forEach(l => l(stateCopy));
 }
 
 export function useVigourStore() {
@@ -35,26 +36,31 @@ export function useVigourStore() {
     const listener = (s: StoreState) => setState(s);
     listeners.add(listener);
     
-    // Initial load from localStorage only once
+    // Initialer Ladevorgang aus dem localStorage beim ersten Mounten
     if (globalState.loading) {
-      const session = localStorage.getItem(CURRENT_USER_KEY);
-      if (session) {
-        const cleanNick = session.toLowerCase();
-        const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-        const userData = allUsers[cleanNick];
-        
-        if (userData) {
-          globalState = {
-            ...globalState,
-            currentUser: cleanNick,
-            userProfile: userData.profile,
-            plans: userData.plans || [],
-            loading: false
-          };
+      try {
+        const session = localStorage.getItem(CURRENT_USER_KEY);
+        if (session) {
+          const cleanNick = session.toLowerCase();
+          const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+          const userData = allUsers[cleanNick];
+          
+          if (userData) {
+            globalState = {
+              ...globalState,
+              currentUser: cleanNick,
+              userProfile: userData.profile,
+              plans: userData.plans || [],
+              loading: false
+            };
+          } else {
+            globalState.loading = false;
+          }
         } else {
           globalState.loading = false;
         }
-      } else {
+      } catch (e) {
+        console.error("Fehler beim Laden der Daten:", e);
         globalState.loading = false;
       }
       notify();
@@ -66,15 +72,19 @@ export function useVigourStore() {
   }, []);
 
   const saveToDisk = (nickname: string, profile: UserProfile, updatedPlans: WorkoutPlan[]) => {
-    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-    if (!allUsers[nickname.toLowerCase()]) return;
-    
-    allUsers[nickname.toLowerCase()] = {
-      ...allUsers[nickname.toLowerCase()],
-      profile,
-      plans: updatedPlans
-    };
-    localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
+    try {
+      const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+      if (!allUsers[nickname.toLowerCase()]) return;
+      
+      allUsers[nickname.toLowerCase()] = {
+        ...allUsers[nickname.toLowerCase()],
+        profile,
+        plans: updatedPlans
+      };
+      localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
+    } catch (e) {
+      console.error("Fehler beim Speichern auf Disk:", e);
+    }
   };
 
   const loginWithNickname = async (nickname: string, pass: string) => {
