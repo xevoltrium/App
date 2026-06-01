@@ -7,20 +7,21 @@ import { UserProfile, WorkoutPlan } from '@/lib/types';
 const USERS_KEY = 'vigour_users_v1';
 const CURRENT_USER_KEY = 'vigour_active_session';
 
-interface LocalUser {
-  nickname: string;
-  passwordHash: string;
-  profile: UserProfile;
-  plans: WorkoutPlan[];
-}
-
 export function useVigourStore() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [plans, setPlans] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load session on mount
+  const loadUserData = useCallback((nickname: string) => {
+    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+    const userData = allUsers[nickname.toLowerCase()];
+    if (userData) {
+      setUserProfile(userData.profile);
+      setPlans(userData.plans || []);
+    }
+  }, []);
+
   useEffect(() => {
     const session = localStorage.getItem(CURRENT_USER_KEY);
     if (session) {
@@ -28,19 +29,12 @@ export function useVigourStore() {
       loadUserData(session);
     }
     setLoading(false);
-  }, []);
-
-  const loadUserData = (nickname: string) => {
-    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-    const userData = allUsers[nickname.toLowerCase()];
-    if (userData) {
-      setUserProfile(userData.profile);
-      setPlans(userData.plans || []);
-    }
-  };
+  }, [loadUserData]);
 
   const saveToDisk = (nickname: string, profile: UserProfile, updatedPlans: WorkoutPlan[]) => {
     const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+    if (!allUsers[nickname.toLowerCase()]) return;
+    
     allUsers[nickname.toLowerCase()] = {
       ...allUsers[nickname.toLowerCase()],
       profile,
@@ -54,12 +48,10 @@ export function useVigourStore() {
     const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
     
     if (allUsers[cleanNick]) {
-      // Existing user: check password (simple mock)
       if (allUsers[cleanNick].passwordHash !== pass) {
         throw new Error("Falsches Passwort für diesen Nickname.");
       }
     } else {
-      // New user: Create
       const newProfile: UserProfile = {
         name: nickname,
         fitnessGoal: 'schlank werden',
@@ -130,6 +122,12 @@ export function useVigourStore() {
     saveToDisk(currentUser, userProfile, updatedPlans);
   };
 
+  const adminUpdatePlans = (updatedPlans: WorkoutPlan[]) => {
+    if (!currentUser || !userProfile) return;
+    setPlans(updatedPlans);
+    saveToDisk(currentUser, userProfile, updatedPlans);
+  };
+
   return {
     user: userProfile,
     authUser: currentUser ? { uid: currentUser, displayName: currentUser } : null,
@@ -141,6 +139,7 @@ export function useVigourStore() {
     deletePlan,
     loginWithNickname,
     logout,
-    markWorkoutComplete
+    markWorkoutComplete,
+    adminUpdatePlans
   };
 }

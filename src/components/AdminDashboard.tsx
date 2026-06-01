@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react';
@@ -15,14 +16,12 @@ import { useVigourStore } from '@/hooks/use-vigour-store';
 
 export function AdminDashboard({ 
   plans, 
-  onLogout,
-  onUpdatePlans
+  onLogout 
 }: { 
   plans: WorkoutPlan[]; 
   onLogout: () => void;
-  onUpdatePlans: (plans: WorkoutPlan[]) => void;
 }) {
-  const { deletePlan } = useVigourStore();
+  const { deletePlan, adminUpdatePlans } = useVigourStore();
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
   const [reasoning, setReasoning] = useState("");
   const [saving, setSaving] = useState(false);
@@ -52,7 +51,7 @@ export function AdminDashboard({
 
       if (reviewResult.success) {
         const updatedPlans = plans.map(p => p.id === editingPlan.id ? editingPlan : p);
-        onUpdatePlans(updatedPlans);
+        adminUpdatePlans(updatedPlans);
         setEditingPlan(null);
         toast({ title: "Plan aktualisiert", description: reviewResult.message });
       } else {
@@ -115,7 +114,7 @@ export function AdminDashboard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">Safe</div>
+                  <div className="text-3xl font-bold">Aktiv</div>
                 </CardContent>
               </Card>
             </div>
@@ -161,22 +160,15 @@ export function AdminDashboard({
                     </CardContent>
                   </Card>
                 ))}
-
-                {filteredPlans.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-                    Keine Pläne gefunden.
-                  </div>
-                )}
               </div>
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95">
+          <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-headline font-bold">Plan Editor</h2>
               <Button variant="outline" onClick={() => setEditingPlan(null)}>Abbrechen</Button>
             </div>
-
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="space-y-2">
@@ -194,77 +186,12 @@ export function AdminDashboard({
                     rows={4}
                   />
                 </div>
-                
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="font-headline font-bold">Übungen pro Tag</h3>
-                  {editingPlan.dailyWorkouts.map((dw, dwIdx) => (
-                    <div key={dwIdx} className="p-4 border rounded-xl bg-muted/20 space-y-4">
-                      <Input 
-                        value={dw.dayName} 
-                        onChange={e => {
-                          const updated = [...editingPlan.dailyWorkouts];
-                          updated[dwIdx].dayName = e.target.value;
-                          setEditingPlan({...editingPlan, dailyWorkouts: updated});
-                        }}
-                        className="font-bold border-none bg-transparent"
-                      />
-                      {dw.exercises.map((ex, exIdx) => (
-                        <div key={exIdx} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg shadow-sm">
-                          <div className="md:col-span-2">
-                            <Label className="text-[10px] uppercase">Name</Label>
-                            <Input 
-                              value={ex.name} 
-                              onChange={e => {
-                                const updated = [...editingPlan.dailyWorkouts];
-                                updated[dwIdx].exercises[exIdx].name = e.target.value;
-                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase">Sets</Label>
-                            <Input 
-                              type="number"
-                              value={ex.sets} 
-                              onChange={e => {
-                                const updated = [...editingPlan.dailyWorkouts];
-                                updated[dwIdx].exercises[exIdx].sets = parseInt(e.target.value);
-                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase">Reps/Dur</Label>
-                            <Input 
-                              value={ex.repsOrDuration} 
-                              onChange={e => {
-                                const updated = [...editingPlan.dailyWorkouts];
-                                updated[dwIdx].exercises[exIdx].repsOrDuration = e.target.value;
-                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-2 pt-6 border-t">
-                  <Label className="text-primary font-bold">Warum änderst du diesen Plan? (KI Review Context)</Label>
-                  <Textarea 
-                    placeholder="Erkläre kurz deine Änderungen..." 
-                    value={reasoning}
-                    onChange={e => setReasoning(e.target.value)}
-                  />
-                </div>
-
                 <Button 
-                  className="w-full h-12 bg-primary text-primary-foreground font-bold text-lg" 
+                  className="w-full h-12 bg-primary text-primary-foreground font-bold" 
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving ? "Review läuft..." : "Änderungen via KI Review validieren"}
+                  {saving ? "Speichere..." : "Änderungen speichern"}
                 </Button>
               </CardContent>
             </Card>
