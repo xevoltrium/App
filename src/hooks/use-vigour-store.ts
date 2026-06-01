@@ -1,13 +1,12 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
 
-const USERS_KEY = 'vigour_users_v1';
-const CURRENT_USER_KEY = 'vigour_active_session';
+const USERS_KEY = 'vigour_users_v2';
+const CURRENT_USER_KEY = 'vigour_active_session_v2';
 
-// Globaler Status, der über alle Instanzen des Hooks geteilt wird
+// Global shared state for reactivity across components
 interface StoreState {
   currentUser: string | null;
   userProfile: UserProfile | null;
@@ -36,7 +35,7 @@ export function useVigourStore() {
     const listener = (s: StoreState) => setState(s);
     listeners.add(listener);
     
-    // Initialer Ladevorgang aus dem localStorage beim ersten Mounten
+    // Initial load from localStorage
     if (globalState.loading) {
       try {
         const session = localStorage.getItem(CURRENT_USER_KEY);
@@ -60,7 +59,7 @@ export function useVigourStore() {
           globalState.loading = false;
         }
       } catch (e) {
-        console.error("Fehler beim Laden der Daten:", e);
+        console.error("Error loading data:", e);
         globalState.loading = false;
       }
       notify();
@@ -83,12 +82,14 @@ export function useVigourStore() {
       };
       localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
     } catch (e) {
-      console.error("Fehler beim Speichern auf Disk:", e);
+      console.error("Error saving to disk:", e);
     }
   };
 
   const loginWithNickname = async (nickname: string, pass: string) => {
     const cleanNick = nickname.trim().toLowerCase();
+    if (!cleanNick || !pass) throw new Error("Name und Passwort erforderlich.");
+
     const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
     
     let profile: UserProfile;

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from 'react';
@@ -30,7 +29,7 @@ export default function Home() {
 
   const handleLogin = async () => {
     if (!nickname || !password) {
-      toast({ variant: "destructive", title: "Fehler", description: "Bitte Nickname und Passwort eingeben." });
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte Name und Passwort eingeben." });
       return;
     }
     setAuthActionLoading(true);
@@ -59,7 +58,7 @@ export default function Home() {
         <Card className="w-full max-w-md shadow-xl border-none">
           <CardHeader>
             <CardTitle className="text-2xl font-headline font-bold text-center">Willkommen</CardTitle>
-            <CardDescription className="text-center">Nickname und Passwort eingeben</CardDescription>
+            <CardDescription className="text-center">Einfach Name und Passwort wählen</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-4">
@@ -67,7 +66,7 @@ export default function Home() {
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Nickname" 
+                    placeholder="Dein Nickname" 
                     className="pl-10"
                     value={nickname} 
                     onChange={e => setNickname(e.target.value)} 
@@ -80,7 +79,7 @@ export default function Home() {
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
                     type="password" 
-                    placeholder="Passwort" 
+                    placeholder="Dein Passwort" 
                     className="pl-10"
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
@@ -95,11 +94,11 @@ export default function Home() {
               className="w-full h-12 text-lg font-bold" 
               disabled={authActionLoading}
             >
-              {authActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Anmelden / Registrieren"}
+              {authActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Starten / Einloggen"}
             </Button>
           </CardContent>
           <CardFooter className="text-center text-xs text-muted-foreground flex flex-col gap-2">
-            <p>Neu hier? Gib einfach einen Namen und ein Passwort ein.</p>
+            <p>Neu hier? Wähle einen Namen und ein Passwort aus.</p>
             <p>Deine Daten werden lokal in deinem Browser gespeichert.</p>
           </CardFooter>
         </Card>
