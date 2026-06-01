@@ -7,8 +7,8 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 
 let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
 
 export function initializeFirebase() {
   if (getApps().length === 0) {
@@ -17,14 +17,13 @@ export function initializeFirebase() {
     app = getApps()[0];
   }
   
-  // Initialize services only if config is valid to prevent crashes
-  if (!auth) {
+  // Defensive initialization to prevent 'invalid-api-key' crashes
+  // only initialize services if a key is present
+  if (!auth && firebaseConfig.apiKey && firebaseConfig.apiKey !== "") {
     try {
-      if (firebaseConfig.apiKey) {
-        auth = getAuth(app);
-      }
+      auth = getAuth(app);
     } catch (e) {
-      console.error("Firebase Auth initialization failed:", e);
+      console.warn("Firebase Auth initialization skipped/failed:", e);
     }
   }
   
@@ -32,7 +31,7 @@ export function initializeFirebase() {
     try {
       db = getFirestore(app);
     } catch (e) {
-      console.error("Firestore initialization failed:", e);
+      console.warn("Firestore initialization failed:", e);
     }
   }
   

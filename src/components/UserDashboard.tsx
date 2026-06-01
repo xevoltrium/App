@@ -30,7 +30,8 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
-  Download
+  Download,
+  FileCode
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useVigourStore } from '@/hooks/use-vigour-store';
@@ -106,23 +107,64 @@ export function UserDashboard({
     const activePlan = plans[0];
     if (!activePlan) return;
     
-    let text = `VigourAI - Trainingsplan: ${activePlan.title}\n`;
-    text += `==================================\n\n`;
-    activePlan.dailyWorkouts.forEach(dw => {
-      text += `${dw.dayName} - Fokus: ${dw.focus}\n`;
-      dw.exercises.forEach(ex => {
-        text += `- ${ex.name}: ${ex.sets} Sets, ${ex.repsOrDuration} (${ex.trainingMethod})\n`;
-      });
-      text += `\n`;
-    });
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="de">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VigourAI - ${activePlan.title}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1a2e1a; max-width: 900px; margin: 40px auto; padding: 20px; background-color: #f8faf8; }
+          .header { text-align: center; margin-bottom: 40px; padding: 30px; background: white; border-radius: 20px; shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e0e7e0; }
+          h1 { color: #22c55e; margin: 0; font-size: 2.5em; }
+          .desc { color: #666; margin-top: 10px; }
+          .day { background: white; border: 1px solid #e0e7e0; border-radius: 15px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+          .day-title { font-weight: bold; font-size: 1.5em; color: #166534; margin-bottom: 5px; border-bottom: 2px solid #f0fdf4; padding-bottom: 5px; }
+          .focus { color: #22c55e; font-weight: 600; text-transform: uppercase; font-size: 0.9em; letter-spacing: 1px; margin-bottom: 20px; }
+          .exercise { border-left: 4px solid #22c55e; padding-left: 20px; margin-bottom: 20px; background: #fafdfa; padding: 15px 20px; border-radius: 0 10px 10px 0; }
+          .ex-name { font-weight: bold; font-size: 1.1em; color: #111; }
+          .ex-meta { font-size: 0.9em; color: #4b634b; font-weight: 500; margin-top: 4px; }
+          .instructions { font-size: 0.9em; color: #555; margin-top: 10px; font-style: italic; }
+          footer { margin-top: 60px; text-align: center; color: #888; font-size: 0.85em; border-top: 1px solid #ddd; padding-top: 20px; }
+          @media print { body { background: white; margin: 0; } .day { break-inside: avoid; border: 1px solid #eee; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>VigourAI</h1>
+          <div class="day-title">${activePlan.title}</div>
+          <p class="desc">${activePlan.description}</p>
+        </div>
+        
+        ${activePlan.dailyWorkouts.map(dw => `
+          <div class="day">
+            <div class="day-title">${dw.dayName}</div>
+            <div class="focus">Fokus: ${dw.focus}</div>
+            ${dw.exercises.map(ex => `
+              <div class="exercise">
+                <div class="ex-name">${ex.name}</div>
+                <div class="ex-meta">${ex.sets} Sätze &bull; ${ex.repsOrDuration} &bull; Methode: ${ex.trainingMethod}</div>
+                <div class="instructions">"${ex.instructions}"</div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+        
+        <footer>
+          Generiert von VigourAI am ${new Date().toLocaleDateString('de-DE')}
+        </footer>
+      </body>
+      </html>
+    `;
     
-    const blob = new Blob([text], { type: 'text/plain' });
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `VigourAI_Plan.txt`;
+    a.download = `VigourAI_Plan_${activePlan.title.replace(/\s+/g, '_')}.html`;
     a.click();
-    toast({ title: "Download gestartet" });
+    toast({ title: "Export erfolgreich", description: "Die HTML-Datei kann direkt im Browser geöffnet werden." });
   };
 
   const handleSendChat = async () => {
@@ -154,7 +196,9 @@ export function UserDashboard({
     <div className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-md border-b">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="font-headline font-bold text-xl text-primary">VigourAI</div>
+          <div className="font-headline font-bold text-xl text-primary flex items-center gap-2">
+            <Sparkles className="w-5 h-5 fill-current" /> VigourAI
+          </div>
           <Button variant="ghost" size="icon" onClick={onLogout}><LogOut className="w-5 h-5" /></Button>
         </div>
       </header>
@@ -164,16 +208,17 @@ export function UserDashboard({
           <div className="space-y-10">
             <section className="bg-primary/5 rounded-3xl p-8 border border-primary/10 flex flex-col md:flex-row gap-8 items-center justify-between">
               <div className="space-y-4 max-w-lg w-full">
-                <div className="flex items-center gap-2 text-primary font-bold"><Sparkles className="w-5 h-5" /> KI-Trainer aktiv</div>
-                <h2 className="text-3xl font-headline font-bold">Dein Plan für heute</h2>
+                <div className="flex items-center gap-2 text-primary font-bold"><Sparkles className="w-5 h-5" /> KI-Trainer bereit</div>
+                <h2 className="text-3xl font-headline font-bold">Lass uns trainieren</h2>
+                <p className="text-muted-foreground text-sm">Gib der KI einen speziellen Wunsch mit oder lass dir einen Standardplan generieren.</p>
                 <div className="flex gap-2">
                   <Input 
-                    placeholder="Spezialisierungswunsch..." 
+                    placeholder="Spezialisierungswunsch (z.B. Fokus auf Rücken)..." 
                     value={specialRequest}
                     onChange={(e) => setSpecialRequest(e.target.value)}
-                    className="bg-white rounded-full h-12"
+                    className="bg-white rounded-full h-12 shadow-sm"
                   />
-                  <Button onClick={() => createPlan()} disabled={generating} className="rounded-full h-12 w-12 bg-primary">
+                  <Button onClick={() => createPlan()} disabled={generating} className="rounded-full h-12 w-12 bg-primary shadow-lg hover:scale-105 transition-transform">
                     {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                   </Button>
                 </div>
@@ -185,7 +230,9 @@ export function UserDashboard({
                     <span className="text-primary">{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
-                  <Button variant="outline" size="sm" onClick={downloadPlan} className="w-full gap-2"><Download className="w-4 h-4" /> Exportieren</Button>
+                  <Button variant="outline" size="sm" onClick={downloadPlan} className="w-full gap-2 border-primary/20 text-primary hover:bg-primary/5">
+                    <Download className="w-4 h-4" /> Plan als HTML
+                  </Button>
                 </div>
               )}
             </section>
@@ -207,8 +254,12 @@ export function UserDashboard({
         )}
 
         {activeTab === 'chat' && (
-          <div className="max-w-2xl mx-auto h-[600px] flex flex-col bg-white border rounded-2xl overflow-hidden shadow-sm">
-            <ScrollArea className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto h-[600px] flex flex-col bg-white border rounded-2xl overflow-hidden shadow-lg">
+            <div className="p-4 border-b bg-muted/30 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              <span className="font-bold">Chat mit deinem Trainer</span>
+            </div>
+            <ScrollArea className="flex-1 p-6 bg-muted/5">
               <div className="space-y-4">
                 {chatMessages.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
@@ -218,59 +269,67 @@ export function UserDashboard({
                 )}
                 {chatMessages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <div className={`max-w-[80%] p-4 rounded-2xl text-sm shadow-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
                       {msg.content}
                     </div>
                   </div>
                 ))}
                 {sendingChat && (
                   <div className="flex justify-start">
-                    <div className="bg-muted p-4 rounded-2xl">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    <div className="bg-white border p-4 rounded-2xl shadow-sm">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     </div>
                   </div>
                 )}
               </div>
             </ScrollArea>
-            <div className="p-4 border-t flex gap-2">
+            <div className="p-4 border-t flex gap-2 bg-white">
               <Input 
                 placeholder="Frag mich was..." 
                 value={chatInput} 
                 onChange={e => setChatInput(e.target.value)} 
                 onKeyDown={e => e.key === 'Enter' && handleSendChat()} 
               />
-              <Button onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()}><Send className="w-4 h-4" /></Button>
+              <Button onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()} className="bg-primary">
+                <Send className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         )}
 
         {activeTab === 'profile' && (
           <div className="max-w-2xl mx-auto space-y-6">
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Target className="w-5 h-5 text-primary" /> Dein Fokus</CardTitle></CardHeader>
+            <Card className="shadow-sm border-none bg-white">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Target className="w-5 h-5 text-primary" /> Deine Fitness-Ziele</CardTitle></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Fitness-Ziel</Label>
-                  <Input value={user.fitnessGoal} onChange={e => updateUser({ fitnessGoal: e.target.value })} />
+                  <Label>Was möchtest du erreichen?</Label>
+                  <Input 
+                    value={user.fitnessGoal} 
+                    onChange={e => updateUser({ fitnessGoal: e.target.value })} 
+                    className="bg-muted/20"
+                  />
                 </div>
                 <div className="space-y-3">
-                  <Label>BMI-Status</Label>
+                  <Label>BMI-Kategorie</Label>
                   <RadioGroup value={user.bmiLevel} onValueChange={v => updateUser({ bmiLevel: v as BMICategory })} className="grid grid-cols-2 gap-4">
                     {['underweight', 'normal', 'overweight', 'obese'].map(l => (
-                      <div key={l} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                      <div key={l} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors bg-white">
                         <RadioGroupItem value={l} id={l} />
-                        <Label htmlFor={l} className="capitalize cursor-pointer">{l === 'underweight' ? 'Untergewicht' : l === 'normal' ? 'Normal' : l === 'overweight' ? 'Übergewicht' : 'Adipositas'}</Label>
+                        <Label htmlFor={l} className="capitalize cursor-pointer">
+                          {l === 'underweight' ? 'Untergewicht' : l === 'normal' ? 'Normal' : l === 'overweight' ? 'Übergewicht' : 'Adipositas'}
+                        </Label>
                       </div>
                     ))}
                   </RadioGroup>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Dumbbell className="w-5 h-5 text-primary" /> Dein Equipment</CardTitle></CardHeader>
+            <Card className="shadow-sm border-none bg-white">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Dumbbell className="w-5 h-5 text-primary" /> Verfügbares Equipment</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
                 {equipmentOptions.map(eq => (
-                  <div key={eq} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                  <div key={eq} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors bg-white">
                     <Checkbox 
                       id={eq} 
                       checked={user.availableEquipment.includes(eq)} 
@@ -289,45 +348,54 @@ export function UserDashboard({
 
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto space-y-4">
-            <Card>
+            <Card className="shadow-sm border-none bg-white overflow-hidden">
               <CardContent className="p-0 divide-y">
-                <div className="p-4 flex items-center justify-between">
+                <div className="p-6 flex items-center justify-between bg-primary/5">
                   <div className="flex items-center gap-3">
-                    <UserCircle className="w-5 h-5 text-muted-foreground" />
+                    <div className="bg-primary/10 p-3 rounded-full">
+                      <UserCircle className="w-8 h-8 text-primary" />
+                    </div>
                     <div>
-                      <p className="font-bold">{user.name}</p>
-                      <Badge variant="outline" className="capitalize text-[10px]">{user.role}</Badge>
+                      <p className="font-bold text-lg">{user.name}</p>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant="outline" className="capitalize text-[10px] bg-white">{user.role}</Badge>
+                        <Badge variant="outline" className="capitalize text-[10px] bg-white">{user.bmiLevel}</Badge>
+                      </div>
                     </div>
                   </div>
                 </div>
                 <button onClick={onLogout} className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3"><LogOut className="w-5 h-5" /> <span>Abmelden</span></div>
+                  <div className="flex items-center gap-3"><LogOut className="w-5 h-5 text-muted-foreground" /> <span>Vom Konto abmelden</span></div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button onClick={() => logout()} className="w-full p-4 flex items-center justify-between text-destructive hover:bg-destructive/5 transition-colors">
-                  <div className="flex items-center gap-3"><Trash2 className="w-5 h-5" /> <span>Daten zurücksetzen</span></div>
+                  <div className="flex items-center gap-3"><Trash2 className="w-5 h-5" /> <span>Alle Daten zurücksetzen</span></div>
                 </button>
               </CardContent>
             </Card>
-            <div className="p-4 bg-muted/30 border border-dashed rounded-xl flex items-start gap-3">
+            <div className="p-6 bg-muted/30 border border-dashed rounded-2xl flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <p className="text-xs text-muted-foreground">Deine Daten werden sicher in der Cloud gespeichert. Deine personalisierten Pläne sind nur für dich sichtbar.</p>
+              <div className="space-y-1">
+                <p className="font-bold text-sm">Privatsphäre & Sicherheit</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">Deine Trainingspläne und Profilinformationen werden verschlüsselt in der Cloud gespeichert. Niemand außer dir hat Zugriff auf deine individuellen Pläne.</p>
+              </div>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <button className={`flex flex-col items-center transition-colors ${activeTab === 'plan' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('plan')}>
-          <LayoutDashboard className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Plan</span>
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-lg border-t flex items-center justify-around px-4 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <button className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'plan' ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'}`} onClick={() => setActiveTab('plan')}>
+          <LayoutDashboard className="w-5 h-5" /><span className="text-[10px] font-bold">Plan</span>
         </button>
-        <button className={`flex flex-col items-center transition-colors ${activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('chat')}>
-          <MessageSquare className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Trainer</span>
+        <button className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'chat' ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'}`} onClick={() => setActiveTab('chat')}>
+          <MessageSquare className="w-5 h-5" /><span className="text-[10px] font-bold">Trainer</span>
         </button>
-        <button className={`flex flex-col items-center transition-colors ${activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('profile')}>
-          <UserCircle className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Profil</span>
+        <button className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'profile' ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'}`} onClick={() => setActiveTab('profile')}>
+          <UserCircle className="w-5 h-5" /><span className="text-[10px] font-bold">Profil</span>
         </button>
-        <button className={`flex flex-col items-center transition-colors ${activeTab === 'settings' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
-          <Settings className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Settings</span>
+        <button className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'settings' ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'}`} onClick={() => setActiveTab('settings')}>
+          <Settings className="w-5 h-5" /><span className="text-[10px] font-bold">Settings</span>
         </button>
       </nav>
     </div>
