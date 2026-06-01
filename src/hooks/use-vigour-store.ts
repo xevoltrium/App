@@ -1,107 +1,140 @@
 
 'use client';
 
-import { useMemo } from 'react';
-import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy } from 'firebase/firestore';
-import { 
-  signOut, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
-import { useUser, useFirestore, useAuth, useDoc, useCollection } from '@/firebase';
+import { useState, useEffect, useCallback } from 'react';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
 
+const USERS_KEY = 'vigour_users_v1';
+const CURRENT_USER_KEY = 'vigour_active_session';
+
+interface LocalUser {
+  nickname: string;
+  passwordHash: string;
+  profile: UserProfile;
+  plans: WorkoutPlan[];
+}
+
 export function useVigourStore() {
-  const { user: authUser, loading: authLoading } = useUser();
-  const db = useFirestore();
-  const auth = useAuth();
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const profileRef = useMemo(() => 
-    (db && authUser) ? doc(db, 'users', authUser.uid) : null
-  , [db, authUser]);
-  
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(profileRef as any);
+  // Load session on mount
+  useEffect(() => {
+    const session = localStorage.getItem(CURRENT_USER_KEY);
+    if (session) {
+      setCurrentUser(session);
+      loadUserData(session);
+    }
+    setLoading(false);
+  }, []);
 
-  const plansQuery = useMemo(() => 
-    (db && authUser) ? query(collection(db, 'users', authUser.uid, 'plans'), orderBy('createdAt', 'desc')) : null
-  , [db, authUser]);
-
-  const { data: plans, loading: plansLoading } = useCollection<WorkoutPlan>(plansQuery as any);
-
-  const loginWithNickname = async (nickname: string, pass: string) => {
-    if (!auth) throw new Error("Firebase ist noch nicht bereit.");
-    const email = `${nickname.toLowerCase().trim()}@vigourai.local`;
-    
-    try {
-      // Try login first
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error: any) {
-      // If user doesn't exist, register them
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        try {
-          await createUserWithEmailAndPassword(auth, email, pass);
-        } catch (regError: any) {
-          throw new Error("Login fehlgeschlagen. Überprüfe dein Passwort oder wähle einen anderen Nickname.");
-        }
-      } else {
-        throw error;
-      }
+  const loadUserData = (nickname: string) => {
+    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+    const userData = allUsers[nickname.toLowerCase()];
+    if (userData) {
+      setUserProfile(userData.profile);
+      setPlans(userData.plans || []);
     }
   };
 
+  const saveToDisk = (nickname: string, profile: UserProfile, updatedPlans: WorkoutPlan[]) => {
+    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+    allUsers[nickname.toLowerCase()] = {
+      ...allUsers[nickname.toLowerCase()],
+      profile,
+      plans: updatedPlans
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
+  };
+
+  const loginWithNickname = async (nickname: string, pass: string) => {
+    const cleanNick = nickname.trim().toLowerCase();
+    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+    
+    if (allUsers[cleanNick]) {
+      // Existing user: check password (simple mock)
+      if (allUsers[cleanNick].passwordHash !== pass) {
+        throw new Error("Falsches Passwort für diesen Nickname.");
+      }
+    } else {
+      // New user: Create
+      const newProfile: UserProfile = {
+        name: nickname,
+        fitnessGoal: 'schlank werden',
+        bmiLevel: 'normal',
+        availableEquipment: [],
+        isBoarded: false,
+        role: nickname.toLowerCase() === 'admin' ? 'admin' : 'user'
+      };
+      allUsers[cleanNick] = {
+        nickname,
+        passwordHash: pass,
+        profile: newProfile,
+        plans: []
+      };
+      localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
+    }
+
+    localStorage.setItem(CURRENT_USER_KEY, cleanNick);
+    setCurrentUser(cleanNick);
+    loadUserData(cleanNick);
+  };
+
   const logout = async () => {
-    if (!auth) return;
-    await signOut(auth);
+    localStorage.removeItem(CURRENT_USER_KEY);
+    setCurrentUser(null);
+    setUserProfile(null);
+    setPlans([]);
   };
 
   const saveUser = async (profileData: UserProfile) => {
-    if (!profileRef) return;
-    await setDoc(profileRef, {
-      ...profileData,
-      updatedAt: Date.now()
-    }, { merge: true });
+    if (!currentUser) return;
+    setUserProfile(profileData);
+    saveToDisk(currentUser, profileData, plans);
   };
 
   const updateUser = async (updates: Partial<UserProfile>) => {
-    if (!profileRef) return;
-    await updateDoc(profileRef, updates);
+    if (!currentUser || !userProfile) return;
+    const updated = { ...userProfile, ...updates };
+    setUserProfile(updated);
+    saveToDisk(currentUser, updated, plans);
   };
 
   const savePlan = async (plan: WorkoutPlan) => {
-    if (!db || !authUser) return;
-    const planRef = doc(collection(db, 'users', authUser.uid, 'plans'), plan.id);
-    await setDoc(planRef, {
-      ...plan,
-      userId: authUser.uid,
-      createdAt: Date.now()
-    });
+    if (!currentUser || !userProfile) return;
+    const updatedPlans = [plan, ...plans];
+    setPlans(updatedPlans);
+    saveToDisk(currentUser, userProfile, updatedPlans);
   };
 
   const deletePlan = async (planId: string) => {
-    if (!db || !authUser) return;
-    const planRef = doc(db, 'users', authUser.uid, 'plans', planId);
-    await deleteDoc(planRef);
+    if (!currentUser || !userProfile) return;
+    const updatedPlans = plans.filter(p => p.id !== planId);
+    setPlans(updatedPlans);
+    saveToDisk(currentUser, userProfile, updatedPlans);
   };
 
   const markWorkoutComplete = async (planId: string, dayIndex: number) => {
-    if (!db || !authUser || !plans) return;
-    const plan = plans.find(p => p.id === planId);
-    if (!plan) return;
-
-    const updatedDaily = [...plan.dailyWorkouts];
-    updatedDaily[dayIndex] = { ...updatedDaily[dayIndex], isCompleted: true };
-    
-    const planRef = doc(db, 'users', authUser.uid, 'plans', planId);
-    await updateDoc(planRef, { dailyWorkouts: updatedDaily });
+    if (!currentUser || !userProfile) return;
+    const updatedPlans = plans.map(p => {
+      if (p.id === planId) {
+        const daily = [...p.dailyWorkouts];
+        daily[dayIndex] = { ...daily[dayIndex], isCompleted: true };
+        return { ...p, dailyWorkouts: daily };
+      }
+      return p;
+    });
+    setPlans(updatedPlans);
+    saveToDisk(currentUser, userProfile, updatedPlans);
   };
 
-  const isStoreLoading = authLoading || (authUser && (profileLoading || plansLoading));
-
   return {
-    user: profile,
-    authUser,
-    plans: plans || [],
-    loading: !!isStoreLoading,
+    user: userProfile,
+    authUser: currentUser ? { uid: currentUser, displayName: currentUser } : null,
+    plans,
+    loading,
     saveUser,
     updateUser,
     savePlan,

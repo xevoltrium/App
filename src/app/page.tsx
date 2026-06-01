@@ -72,6 +72,7 @@ export default function Home() {
                     className="pl-10"
                     value={nickname} 
                     onChange={e => setNickname(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && handleLogin()}
                   />
                 </div>
               </div>
@@ -84,6 +85,7 @@ export default function Home() {
                     className="pl-10"
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && handleLogin()}
                   />
                 </div>
               </div>
@@ -99,7 +101,7 @@ export default function Home() {
           </CardContent>
           <CardFooter className="text-center text-xs text-muted-foreground flex flex-col gap-2">
             <p>Kein Konto? Gib einfach einen neuen Namen ein.</p>
-            <p>Deine Daten werden sicher in der Cloud gespeichert.</p>
+            <p>Deine Daten werden lokal in deinem Browser gespeichert.</p>
           </CardFooter>
         </Card>
         <Toaster />
