@@ -12,13 +12,16 @@ let db: Firestore;
 
 export function initializeFirebase() {
   if (getApps().length === 0) {
+    // If apiKey is missing, initializeApp might still run but auth/db will fail later.
+    // We provide the config and let Firebase SDK handle the validation.
     app = initializeApp(firebaseConfig);
   } else {
     app = getApps()[0];
   }
   
-  auth = getAuth(app);
-  db = getFirestore(app);
+  // Initialize services lazily or once
+  if (!auth) auth = getAuth(app);
+  if (!db) db = getFirestore(app);
   
   return { app, auth, db };
 }

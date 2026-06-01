@@ -8,11 +8,9 @@ import { chatWithTrainer } from '@/ai/flows/chat-with-trainer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { WorkoutCard } from '@/components/WorkoutCard';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -198,6 +196,12 @@ export function UserDashboard({
                 ))}
               </div>
             )}
+            {!activePlan && generating && (
+              <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="text-muted-foreground animate-pulse">KI erstellt deinen individuellen Plan...</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -205,6 +209,12 @@ export function UserDashboard({
           <div className="max-w-2xl mx-auto h-[600px] flex flex-col bg-white border rounded-2xl overflow-hidden shadow-sm">
             <ScrollArea className="flex-1 p-6">
               <div className="space-y-4">
+                {chatMessages.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                    <p>Frag deinen KI-Trainer nach Tipps oder Erklärungen zu Übungen!</p>
+                  </div>
+                )}
                 {chatMessages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -212,11 +222,23 @@ export function UserDashboard({
                     </div>
                   </div>
                 ))}
+                {sendingChat && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted p-4 rounded-2xl">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  </div>
+                )}
               </div>
             </ScrollArea>
             <div className="p-4 border-t flex gap-2">
-              <Input placeholder="Frag mich was..." value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} />
-              <Button onClick={handleSendChat} disabled={sendingChat}><Send className="w-4 h-4" /></Button>
+              <Input 
+                placeholder="Frag mich was..." 
+                value={chatInput} 
+                onChange={e => setChatInput(e.target.value)} 
+                onKeyDown={e => e.key === 'Enter' && handleSendChat()} 
+              />
+              <Button onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()}><Send className="w-4 h-4" /></Button>
             </div>
           </div>
         )}
@@ -224,27 +246,30 @@ export function UserDashboard({
         {activeTab === 'profile' && (
           <div className="max-w-2xl mx-auto space-y-6">
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Target className="w-5 h-5" /> Ziel & BMI</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Target className="w-5 h-5 text-primary" /> Dein Fokus</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Fitness-Ziel</Label>
                   <Input value={user.fitnessGoal} onChange={e => updateUser({ fitnessGoal: e.target.value })} />
                 </div>
-                <RadioGroup value={user.bmiLevel} onValueChange={v => updateUser({ bmiLevel: v as BMICategory })} className="flex gap-4">
-                  {['underweight', 'normal', 'overweight', 'obese'].map(l => (
-                    <div key={l} className="flex items-center space-x-2">
-                      <RadioGroupItem value={l} id={l} />
-                      <Label htmlFor={l} className="capitalize">{l}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <div className="space-y-3">
+                  <Label>BMI-Status</Label>
+                  <RadioGroup value={user.bmiLevel} onValueChange={v => updateUser({ bmiLevel: v as BMICategory })} className="grid grid-cols-2 gap-4">
+                    {['underweight', 'normal', 'overweight', 'obese'].map(l => (
+                      <div key={l} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                        <RadioGroupItem value={l} id={l} />
+                        <Label htmlFor={l} className="capitalize cursor-pointer">{l}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Dumbbell className="w-5 h-5" /> Equipment</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Dumbbell className="w-5 h-5 text-primary" /> Dein Equipment</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4">
                 {equipmentOptions.map(eq => (
-                  <div key={eq} className="flex items-center space-x-2">
+                  <div key={eq} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
                     <Checkbox 
                       id={eq} 
                       checked={user.availableEquipment.includes(eq)} 
@@ -253,7 +278,7 @@ export function UserDashboard({
                         updateUser({ availableEquipment: updated });
                       }}
                     />
-                    <Label htmlFor={eq}>{eq}</Label>
+                    <Label htmlFor={eq} className="cursor-pointer">{eq}</Label>
                   </div>
                 ))}
               </CardContent>
@@ -265,34 +290,43 @@ export function UserDashboard({
           <div className="max-w-2xl mx-auto space-y-4">
             <Card>
               <CardContent className="p-0 divide-y">
-                <button onClick={onLogout} className="w-full p-4 flex items-center justify-between hover:bg-muted/50">
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <UserCircle className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-bold">{user.name}</p>
+                      <Badge variant="outline" className="capitalize text-[10px]">{user.role}</Badge>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={onLogout} className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3"><LogOut className="w-5 h-5" /> <span>Abmelden</span></div>
                 </button>
-                <button onClick={() => logout()} className="w-full p-4 flex items-center justify-between text-destructive hover:bg-destructive/5">
+                <button onClick={() => logout()} className="w-full p-4 flex items-center justify-between text-destructive hover:bg-destructive/5 transition-colors">
                   <div className="flex items-center gap-3"><Trash2 className="w-5 h-5" /> <span>Daten zurücksetzen</span></div>
                 </button>
               </CardContent>
             </Card>
             <div className="p-4 bg-muted/30 border border-dashed rounded-xl flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <p className="text-xs text-muted-foreground">Deine Daten werden sicher in der Cloud gespeichert. Du bist als {user.role} angemeldet.</p>
+              <p className="text-xs text-muted-foreground">Deine Daten werden sicher in der Cloud gespeichert. Deine personalisierten Pläne sind nur für dich sichtbar.</p>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-40">
-        <button className={`flex flex-col items-center ${activeTab === 'plan' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('plan')}>
-          <LayoutDashboard className="w-6 h-6" /><span className="text-[10px]">Plan</span>
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <button className={`flex flex-col items-center transition-colors ${activeTab === 'plan' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('plan')}>
+          <LayoutDashboard className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Plan</span>
         </button>
-        <button className={`flex flex-col items-center ${activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('chat')}>
-          <MessageSquare className="w-6 h-6" /><span className="text-[10px]">Chat</span>
+        <button className={`flex flex-col items-center transition-colors ${activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('chat')}>
+          <MessageSquare className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Trainer</span>
         </button>
-        <button className={`flex flex-col items-center ${activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('profile')}>
-          <UserCircle className="w-6 h-6" /><span className="text-[10px]">Profil</span>
+        <button className={`flex flex-col items-center transition-colors ${activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('profile')}>
+          <UserCircle className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Profil</span>
         </button>
-        <button className={`flex flex-col items-center ${activeTab === 'settings' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
-          <Settings className="w-6 h-6" /><span className="text-[10px]">Settings</span>
+        <button className={`flex flex-col items-center transition-colors ${activeTab === 'settings' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
+          <Settings className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">Settings</span>
         </button>
       </nav>
     </div>

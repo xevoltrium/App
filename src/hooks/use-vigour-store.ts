@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { useUser, useFirestore, useAuth, useDoc, useCollection } from '@/firebase';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
@@ -28,8 +28,12 @@ export function useVigourStore() {
 
   const loginWithGoogle = async () => {
     if (!auth) return;
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login error", error);
+    }
   };
 
   const logout = async () => {
