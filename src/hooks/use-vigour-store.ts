@@ -5,6 +5,7 @@ import { UserProfile, WorkoutPlan } from '@/lib/types';
 
 const USERS_KEY = 'vigour_users_local_v3';
 const CURRENT_USER_KEY = 'vigour_active_nick_v3';
+const DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6I5txj5cInY8DbB4LW2_cfEkcqbtw3bAwGrDxoMObQIZw";
 
 // Shared state Singleton to prevent multiple stores fighting
 interface StoreState {
@@ -100,14 +101,15 @@ export function useVigourStore() {
       profile = allData[cleanNick].profile;
       userPlans = allData[cleanNick].plans || [];
     } else {
-      // Create new local user
+      // Create new local user with hardcoded default API key
       profile = {
         name: nickname,
         fitnessGoal: 'Allgemeine Fitness',
         bmiLevel: 'normal',
         availableEquipment: [],
         isBoarded: false,
-        role: nickname.toLowerCase().includes('admin') ? 'admin' : 'user'
+        role: nickname.toLowerCase().includes('admin') ? 'admin' : 'user',
+        geminiApiKey: DEFAULT_GEMINI_API_KEY
       };
       allData[cleanNick] = {
         nickname,
