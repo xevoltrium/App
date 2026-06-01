@@ -3,7 +3,14 @@
 
 import { useMemo } from 'react';
 import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signInAnonymously
+} from 'firebase/auth';
 import { useUser, useFirestore, useAuth, useDoc, useCollection } from '@/firebase';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
 
@@ -28,12 +35,23 @@ export function useVigourStore() {
 
   const loginWithGoogle = async () => {
     if (!auth) return;
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login error", error);
-    }
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const loginWithEmail = async (email: string, pass: string) => {
+    if (!auth) return;
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const registerWithEmail = async (email: string, pass: string) => {
+    if (!auth) return;
+    await createUserWithEmailAndPassword(auth, email, pass);
+  };
+
+  const loginAsGuest = async () => {
+    if (!auth) return;
+    await signInAnonymously(auth);
   };
 
   const logout = async () => {
@@ -92,6 +110,9 @@ export function useVigourStore() {
     savePlan,
     deletePlan,
     loginWithGoogle,
+    loginWithEmail,
+    registerWithEmail,
+    loginAsGuest,
     logout,
     markWorkoutComplete
   };
