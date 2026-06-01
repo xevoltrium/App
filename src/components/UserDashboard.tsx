@@ -25,13 +25,14 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
-  Download
+  Download,
+  Printer
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useVigourStore } from '@/hooks/use-vigour-store';
 
 export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
-  const { user, plans, updateUser, savePlan, markWorkoutComplete, authUser, logout } = useVigourStore();
+  const { user, plans, updateUser, savePlan, markWorkoutComplete, authUser } = useVigourStore();
   const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'plan' | 'chat' | 'profile' | 'settings'>('plan');
   const [specialRequest, setSpecialRequest] = useState(user?.specialPreferences || "");
@@ -79,7 +80,7 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
           })),
           isCompleted: false
         })),
-        userId: authUser?.uid || 'anonymous',
+        userId: authUser?.uid || 'local-user',
         createdAt: Date.now()
       };
 
@@ -118,7 +119,7 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
             font-family: 'Inter', sans-serif; 
             line-height: 1.6; 
             color: var(--text); 
-            max-width: 800px; 
+            max-width: 900px; 
             margin: 0 auto; 
             padding: 40px 20px; 
             background-color: var(--bg); 
@@ -135,69 +136,90 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
             font-family: 'Space Grotesk', sans-serif; 
             color: var(--primary); 
             margin: 0; 
-            font-size: 2.5rem; 
-            letter-spacing: -1px; 
+            font-size: 3rem; 
+            letter-spacing: -1.5px; 
         }
-        .plan-title { font-size: 1.25rem; color: var(--text); margin-top: 8px; font-weight: 700; }
-        .plan-desc { color: var(--text-muted); margin-top: 12px; font-size: 0.95rem; }
+        .plan-title { font-size: 1.5rem; color: var(--text); margin-top: 10px; font-weight: 700; }
+        .plan-desc { color: var(--text-muted); margin-top: 12px; font-size: 1rem; max-width: 600px; margin-left: auto; margin-right: auto; }
         .day { 
             background: var(--card); 
-            border-radius: 20px; 
-            padding: 30px; 
-            margin-bottom: 30px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            border-radius: 24px; 
+            padding: 35px; 
+            margin-bottom: 35px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
             border: 1px solid #f1f5f9;
         }
         .day-title { 
             font-family: 'Space Grotesk', sans-serif; 
             font-weight: bold; 
-            font-size: 1.5rem; 
+            font-size: 1.8rem; 
             color: var(--text); 
-            margin-bottom: 4px; 
+            margin-bottom: 6px; 
         }
         .focus { 
             color: var(--primary); 
             font-weight: 700; 
             text-transform: uppercase; 
-            font-size: 0.75rem; 
+            font-size: 0.85rem; 
             margin-bottom: 24px; 
             display: inline-block; 
             background: #f0fdf4; 
-            padding: 4px 12px; 
+            padding: 6px 16px; 
             border-radius: 99px; 
         }
-        .exercise-list { display: grid; gap: 16px; }
+        .exercise-list { display: grid; gap: 20px; }
         .exercise { 
-            padding: 16px 20px; 
+            padding: 20px 24px; 
             background: #f8fafc; 
-            border-radius: 12px;
-            border-left: 4px solid var(--primary);
+            border-radius: 16px;
+            border-left: 6px solid var(--primary);
         }
-        .ex-name { font-weight: 700; font-size: 1.1rem; color: var(--text); }
+        .ex-name { font-weight: 700; font-size: 1.25rem; color: var(--text); }
         .ex-meta { 
-            font-size: 0.85rem; 
+            font-size: 0.95rem; 
             color: var(--primary-dark); 
             font-weight: 600; 
-            margin-top: 4px; 
+            margin-top: 6px; 
             display: flex;
-            gap: 12px;
+            gap: 15px;
+            flex-wrap: wrap;
         }
         .instructions { 
-            font-size: 0.9rem; 
+            font-size: 0.95rem; 
             color: var(--text-muted); 
-            margin-top: 10px; 
+            margin-top: 12px; 
             line-height: 1.5;
-            padding-top: 10px;
+            padding-top: 12px;
             border-top: 1px solid #e2e8f0;
+            font-style: italic;
         }
-        footer { margin-top: 60px; text-align: center; color: var(--text-muted); font-size: 0.75rem; }
+        .btn-print {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 99px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+        }
+        footer { margin-top: 80px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
         @media print { 
+            .btn-print { display: none; }
             body { background: white; padding: 0; } 
             .header, .day { box-shadow: none; border: 1px solid #eee; break-inside: avoid; } 
         }
     </style>
 </head>
 <body>
+    <button class="btn-print" onclick="window.print()">Plan drucken</button>
     <div class="header">
         <h1>VigourAI</h1>
         <div class="plan-title">${activePlan.title}</div>
@@ -212,17 +234,17 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
                     <div class="exercise">
                         <div class="ex-name">${ex.name}</div>
                         <div class="ex-meta">
-                            <span>${ex.sets} Sätze</span>
-                            <span>${ex.repsOrDuration}</span>
-                            <span>${ex.trainingMethod}</span>
+                            <span>🔥 ${ex.sets} Sätze</span>
+                            <span>⏱️ ${ex.repsOrDuration}</span>
+                            <span>🏷️ ${ex.trainingMethod}</span>
                         </div>
-                        <div class="instructions">${ex.instructions}</div>
+                        <div class="instructions">"${ex.instructions}"</div>
                     </div>
                 `).join('')}
             </div>
         </div>
     `).join('')}
-    <footer>Diese Datei wurde von VigourAI generiert. Dein KI Fitness-Begleiter.</footer>
+    <footer>Generiert von VigourAI - Dein lokaler KI Fitness-Begleiter.</footer>
 </body>
 </html>`;
     
@@ -230,10 +252,10 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Mein_VigourAI_Plan.html`;
+    a.download = `VigourAI_Trainingsplan.html`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Plan exportiert", description: "Die HTML-Datei wurde heruntergeladen." });
+    toast({ title: "Plan exportiert", description: "HTML-Datei wurde heruntergeladen." });
   };
 
   const handleSendChat = async () => {
@@ -276,12 +298,12 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
           <div className="space-y-10">
             <section className="bg-primary/5 rounded-3xl p-8 border border-primary/10 flex flex-col md:flex-row gap-8 items-center justify-between">
               <div className="space-y-4 max-w-lg w-full">
-                <div className="flex items-center gap-2 text-primary font-bold"><Sparkles className="w-5 h-5" /> KI-Trainer bereit</div>
-                <h2 className="text-3xl font-headline font-bold">Lass uns trainieren</h2>
+                <div className="flex items-center gap-2 text-primary font-bold"><Sparkles className="w-5 h-5" /> KI-Trainer aktiv</div>
+                <h2 className="text-3xl font-headline font-bold">Lass uns starten</h2>
                 <p className="text-muted-foreground text-sm">Gib einen Wunsch ein oder erstelle einen neuen Plan.</p>
                 <div className="flex gap-2">
                   <Input 
-                    placeholder="Was möchtest du heute?" 
+                    placeholder="Dein Trainingswunsch..." 
                     value={specialRequest}
                     onChange={(e) => setSpecialRequest(e.target.value)}
                     className="bg-white rounded-full h-12 shadow-sm"
@@ -292,14 +314,19 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
                 </div>
               </div>
               {activePlan && (
-                <div className="w-full md:w-64 space-y-4 bg-white p-6 rounded-2xl shadow-sm border">
+                <div className="w-full md:w-72 space-y-4 bg-white p-6 rounded-2xl shadow-sm border">
                   <div className="flex justify-between items-center text-sm font-bold">
-                    <span>Fortschritt</span>
+                    <span>Plan-Status</span>
                     <span className="text-primary">{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
-                  <Button variant="outline" size="sm" onClick={downloadPlanAsHTML} className="w-full gap-2 border-primary/20 text-primary hover:bg-primary/5">
-                    <Download className="w-4 h-4" /> Als HTML laden (für Browser)
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={downloadPlanAsHTML} 
+                    className="w-full gap-2 border-primary/20 text-primary hover:bg-primary/5 font-bold"
+                  >
+                    <Download className="w-4 h-4" /> HTML Export (Browser)
                   </Button>
                 </div>
               )}
@@ -308,7 +335,12 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
             {activePlan && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-700">
                 {activePlan.dailyWorkouts.map((workout, idx) => (
-                  <WorkoutCard key={`${activePlan.id}-${idx}`} index={idx} workout={workout} onComplete={() => markWorkoutComplete(activePlan.id, idx)} />
+                  <WorkoutCard 
+                    key={`${activePlan.id}-${idx}`} 
+                    index={idx} 
+                    workout={workout} 
+                    onComplete={() => markWorkoutComplete(activePlan.id, idx)} 
+                  />
                 ))}
               </div>
             )}
@@ -316,7 +348,7 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
             {!activePlan && generating && (
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-muted-foreground animate-pulse">KI erstellt dein Training...</p>
+                <p className="text-muted-foreground animate-pulse">Dein Plan wird maßgeschneidert...</p>
               </div>
             )}
           </div>
@@ -363,14 +395,14 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
         {activeTab === 'profile' && (
           <div className="max-w-2xl mx-auto space-y-6">
             <Card className="shadow-sm border-none bg-white">
-              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Target className="w-5 h-5 text-primary" /> Dein Profil</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Target className="w-5 h-5 text-primary" /> Dein Fitness-Profil</CardTitle></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Fitness-Ziel</Label>
+                  <Label>Was ist dein Ziel?</Label>
                   <Input value={user.fitnessGoal} onChange={e => updateUser({ fitnessGoal: e.target.value })} />
                 </div>
                 <div className="space-y-3">
-                  <Label>BMI Einstufung</Label>
+                  <Label>BMI Status</Label>
                   <RadioGroup value={user.bmiLevel} onValueChange={v => updateUser({ bmiLevel: v as BMICategory })} className="grid grid-cols-2 gap-4">
                     {['underweight', 'normal', 'overweight', 'obese'].map(l => (
                       <div key={l} className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-muted/50 cursor-pointer bg-white">
@@ -392,15 +424,12 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
                 <div className="p-6 flex items-center justify-between bg-primary/5">
                   <div className="flex items-center gap-3">
                     <div className="bg-primary/10 p-3 rounded-full"><UserCircle className="w-8 h-8 text-primary" /></div>
-                    <div><p className="font-bold text-lg">{user.name}</p></div>
+                    <div><p className="font-bold text-lg">{user.name}</p><p className="text-xs text-muted-foreground">Lokal angemeldet</p></div>
                   </div>
                 </div>
                 <button onClick={onLogout} className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3"><LogOut className="w-5 h-5" /> <span>Abmelden</span></div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <button onClick={() => logout()} className="w-full p-4 flex items-center justify-between text-destructive hover:bg-destructive/5 transition-colors">
-                  <div className="flex items-center gap-3"><Trash2 className="w-5 h-5" /> <span>Daten löschen</span></div>
                 </button>
               </CardContent>
             </Card>
@@ -419,7 +448,7 @@ export function UserDashboard({ onLogout }: { onLogout: () => void; }) {
           <UserCircle className="w-5 h-5" /><span className="text-[10px] font-bold">Profil</span>
         </button>
         <button className={`flex flex-col items-center gap-1 ${activeTab === 'settings' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
-          <Settings className="w-5 h-5" /><span className="text-[10px] font-bold">Einstellungen</span>
+          <Settings className="w-5 h-5" /><span className="text-[10px] font-bold">Mehr</span>
         </button>
       </nav>
     </div>

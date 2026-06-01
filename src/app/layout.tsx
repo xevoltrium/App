@@ -2,8 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'VigourAI - Personalisierte KI Fitness',
-  description: 'KI-gestützte personalisierte Trainingspläne für ein gesünderes Leben.',
+  title: 'VigourAI - Dein KI Fitness Coach',
+  description: 'Personalisierte Trainingspläne ohne Stress - Direkt im Browser.',
 };
 
 export default function RootLayout({
