@@ -1,7 +1,7 @@
 
 'use client';
 
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp, FirebaseOptions } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
@@ -12,14 +12,16 @@ let db: Firestore;
 
 export function initializeFirebase() {
   if (getApps().length === 0) {
-    // If apiKey is missing, initializeApp might still run but auth/db will fail later.
-    // We provide the config and let Firebase SDK handle the validation.
+    // Basic validation to avoid SDK crash with empty API key
+    if (!firebaseConfig.apiKey) {
+      console.warn("Firebase API Key is missing. Check your environment variables.");
+    }
     app = initializeApp(firebaseConfig);
   } else {
     app = getApps()[0];
   }
   
-  // Initialize services lazily or once
+  // Initialize services only once
   if (!auth) auth = getAuth(app);
   if (!db) db = getFirestore(app);
   
