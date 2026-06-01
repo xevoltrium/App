@@ -7,29 +7,63 @@ import { UserProfile, WorkoutPlan } from '@/lib/types';
 const USERS_KEY = 'vigour_users_v1';
 const CURRENT_USER_KEY = 'vigour_active_session';
 
-export function useVigourStore() {
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+// Shared state for all hook instances
+interface StoreState {
+  currentUser: string | null;
+  userProfile: UserProfile | null;
+  plans: WorkoutPlan[];
+  loading: boolean;
+}
 
-  const loadUserData = useCallback((nickname: string) => {
-    const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-    const userData = allUsers[nickname.toLowerCase()];
-    if (userData) {
-      setUserProfile(userData.profile);
-      setPlans(userData.plans || []);
-    }
-  }, []);
+let globalState: StoreState = {
+  currentUser: null,
+  userProfile: null,
+  plans: [],
+  loading: true
+};
+
+const listeners = new Set<(s: StoreState) => void>();
+
+function notify() {
+  listeners.forEach(l => l({ ...globalState }));
+}
+
+export function useVigourStore() {
+  const [state, setState] = useState<StoreState>(globalState);
 
   useEffect(() => {
-    const session = localStorage.getItem(CURRENT_USER_KEY);
-    if (session) {
-      setCurrentUser(session);
-      loadUserData(session);
+    const listener = (s: StoreState) => setState(s);
+    listeners.add(listener);
+    
+    // Initial load from localStorage only once
+    if (globalState.loading) {
+      const session = localStorage.getItem(CURRENT_USER_KEY);
+      if (session) {
+        const cleanNick = session.toLowerCase();
+        const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+        const userData = allUsers[cleanNick];
+        
+        if (userData) {
+          globalState = {
+            ...globalState,
+            currentUser: cleanNick,
+            userProfile: userData.profile,
+            plans: userData.plans || [],
+            loading: false
+          };
+        } else {
+          globalState.loading = false;
+        }
+      } else {
+        globalState.loading = false;
+      }
+      notify();
     }
-    setLoading(false);
-  }, [loadUserData]);
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
 
   const saveToDisk = (nickname: string, profile: UserProfile, updatedPlans: WorkoutPlan[]) => {
     const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
@@ -47,12 +81,17 @@ export function useVigourStore() {
     const cleanNick = nickname.trim().toLowerCase();
     const allUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
     
+    let profile: UserProfile;
+    let userPlans: WorkoutPlan[] = [];
+
     if (allUsers[cleanNick]) {
       if (allUsers[cleanNick].passwordHash !== pass) {
         throw new Error("Falsches Passwort für diesen Nickname.");
       }
+      profile = allUsers[cleanNick].profile;
+      userPlans = allUsers[cleanNick].plans || [];
     } else {
-      const newProfile: UserProfile = {
+      profile = {
         name: nickname,
         fitnessGoal: 'schlank werden',
         bmiLevel: 'normal',
@@ -63,54 +102,69 @@ export function useVigourStore() {
       allUsers[cleanNick] = {
         nickname,
         passwordHash: pass,
-        profile: newProfile,
+        profile,
         plans: []
       };
       localStorage.setItem(USERS_KEY, JSON.stringify(allUsers));
     }
 
     localStorage.setItem(CURRENT_USER_KEY, cleanNick);
-    setCurrentUser(cleanNick);
-    loadUserData(cleanNick);
+    
+    globalState = {
+      ...globalState,
+      currentUser: cleanNick,
+      userProfile: profile,
+      plans: userPlans,
+      loading: false
+    };
+    notify();
   };
 
   const logout = async () => {
     localStorage.removeItem(CURRENT_USER_KEY);
-    setCurrentUser(null);
-    setUserProfile(null);
-    setPlans([]);
+    globalState = {
+      currentUser: null,
+      userProfile: null,
+      plans: [],
+      loading: false
+    };
+    notify();
   };
 
   const saveUser = async (profileData: UserProfile) => {
-    if (!currentUser) return;
-    setUserProfile(profileData);
-    saveToDisk(currentUser, profileData, plans);
+    if (!globalState.currentUser) return;
+    globalState.userProfile = profileData;
+    saveToDisk(globalState.currentUser, profileData, globalState.plans);
+    notify();
   };
 
   const updateUser = async (updates: Partial<UserProfile>) => {
-    if (!currentUser || !userProfile) return;
-    const updated = { ...userProfile, ...updates };
-    setUserProfile(updated);
-    saveToDisk(currentUser, updated, plans);
+    if (!globalState.currentUser || !globalState.userProfile) return;
+    const updated = { ...globalState.userProfile, ...updates };
+    globalState.userProfile = updated;
+    saveToDisk(globalState.currentUser, updated, globalState.plans);
+    notify();
   };
 
   const savePlan = async (plan: WorkoutPlan) => {
-    if (!currentUser || !userProfile) return;
-    const updatedPlans = [plan, ...plans];
-    setPlans(updatedPlans);
-    saveToDisk(currentUser, userProfile, updatedPlans);
+    if (!globalState.currentUser || !globalState.userProfile) return;
+    const updatedPlans = [plan, ...globalState.plans];
+    globalState.plans = updatedPlans;
+    saveToDisk(globalState.currentUser, globalState.userProfile, updatedPlans);
+    notify();
   };
 
   const deletePlan = async (planId: string) => {
-    if (!currentUser || !userProfile) return;
-    const updatedPlans = plans.filter(p => p.id !== planId);
-    setPlans(updatedPlans);
-    saveToDisk(currentUser, userProfile, updatedPlans);
+    if (!globalState.currentUser || !globalState.userProfile) return;
+    const updatedPlans = globalState.plans.filter(p => p.id !== planId);
+    globalState.plans = updatedPlans;
+    saveToDisk(globalState.currentUser, globalState.userProfile, updatedPlans);
+    notify();
   };
 
   const markWorkoutComplete = async (planId: string, dayIndex: number) => {
-    if (!currentUser || !userProfile) return;
-    const updatedPlans = plans.map(p => {
+    if (!globalState.currentUser || !globalState.userProfile) return;
+    const updatedPlans = globalState.plans.map(p => {
       if (p.id === planId) {
         const daily = [...p.dailyWorkouts];
         daily[dayIndex] = { ...daily[dayIndex], isCompleted: true };
@@ -118,21 +172,23 @@ export function useVigourStore() {
       }
       return p;
     });
-    setPlans(updatedPlans);
-    saveToDisk(currentUser, userProfile, updatedPlans);
+    globalState.plans = updatedPlans;
+    saveToDisk(globalState.currentUser, globalState.userProfile, updatedPlans);
+    notify();
   };
 
   const adminUpdatePlans = (updatedPlans: WorkoutPlan[]) => {
-    if (!currentUser || !userProfile) return;
-    setPlans(updatedPlans);
-    saveToDisk(currentUser, userProfile, updatedPlans);
+    if (!globalState.currentUser || !globalState.userProfile) return;
+    globalState.plans = updatedPlans;
+    saveToDisk(globalState.currentUser, globalState.userProfile, updatedPlans);
+    notify();
   };
 
   return {
-    user: userProfile,
-    authUser: currentUser ? { uid: currentUser, displayName: currentUser } : null,
-    plans,
-    loading,
+    user: state.userProfile,
+    authUser: state.currentUser ? { uid: state.currentUser, displayName: state.currentUser } : null,
+    plans: state.plans,
+    loading: state.loading,
     saveUser,
     updateUser,
     savePlan,

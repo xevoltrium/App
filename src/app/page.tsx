@@ -7,7 +7,7 @@ import { OnboardingForm } from '@/components/OnboardingForm';
 import { UserDashboard } from '@/components/UserDashboard';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { VigourLogo } from '@/components/VigourLogo';
-import { Loader2, KeyRound, User } from 'lucide-react';
+import { Loader2, KeyRound, User as UserIcon } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ export default function Home() {
   const { 
     user, 
     authUser, 
-    plans, 
     loading, 
     saveUser, 
     logout, 
@@ -60,15 +59,15 @@ export default function Home() {
         <Card className="w-full max-w-md shadow-xl border-none">
           <CardHeader>
             <CardTitle className="text-2xl font-headline font-bold text-center">Willkommen</CardTitle>
-            <CardDescription className="text-center">Einfach Nickname und Passwort wählen</CardDescription>
+            <CardDescription className="text-center">Nickname und Passwort eingeben</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Dein Nickname" 
+                    placeholder="Nickname" 
                     className="pl-10"
                     value={nickname} 
                     onChange={e => setNickname(e.target.value)} 
@@ -81,7 +80,7 @@ export default function Home() {
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
                     type="password" 
-                    placeholder="Dein Passwort" 
+                    placeholder="Passwort" 
                     className="pl-10"
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
@@ -96,11 +95,11 @@ export default function Home() {
               className="w-full h-12 text-lg font-bold" 
               disabled={authActionLoading}
             >
-              {authActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Loslegen"}
+              {authActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Anmelden / Registrieren"}
             </Button>
           </CardContent>
           <CardFooter className="text-center text-xs text-muted-foreground flex flex-col gap-2">
-            <p>Kein Konto? Gib einfach einen neuen Namen ein.</p>
+            <p>Neu hier? Gib einfach einen Namen und ein Passwort ein.</p>
             <p>Deine Daten werden lokal in deinem Browser gespeichert.</p>
           </CardFooter>
         </Card>
@@ -112,9 +111,6 @@ export default function Home() {
   if (!user || !user.isBoarded) {
     return (
       <div className="min-h-screen bg-background relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
-        
         <header className="py-8 px-4 flex justify-center">
           <VigourLogo />
         </header>
@@ -129,11 +125,7 @@ export default function Home() {
   if (user.role === 'admin') {
     return (
       <>
-        <AdminDashboard 
-          plans={plans} 
-          onUpdatePlans={() => {}} 
-          onLogout={logout} 
-        />
+        <AdminDashboard onLogout={logout} />
         <Toaster />
       </>
     );
@@ -141,11 +133,7 @@ export default function Home() {
 
   return (
     <>
-      <UserDashboard 
-        user={user} 
-        plans={plans} 
-        onLogout={logout}
-      />
+      <UserDashboard onLogout={logout} />
       <Toaster />
     </>
   );

@@ -15,13 +15,11 @@ import { toast } from '@/hooks/use-toast';
 import { useVigourStore } from '@/hooks/use-vigour-store';
 
 export function AdminDashboard({ 
-  plans, 
   onLogout 
 }: { 
-  plans: WorkoutPlan[]; 
   onLogout: () => void;
 }) {
-  const { deletePlan, adminUpdatePlans } = useVigourStore();
+  const { plans, deletePlan, adminUpdatePlans } = useVigourStore();
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
   const [reasoning, setReasoning] = useState("");
   const [saving, setSaving] = useState(false);
