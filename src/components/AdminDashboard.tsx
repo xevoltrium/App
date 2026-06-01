@@ -1,0 +1,251 @@
+"use client"
+
+import { useState } from 'react';
+import { UserProfile, WorkoutPlan, DailyWorkout } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Shield, User, Edit3, Trash2, LogOut, Search, Users, Activity } from 'lucide-react';
+import { editAiGeneratedPlan } from '@/ai/flows/admin-edit-ai-generated-plan';
+import { toast } from '@/hooks/use-toast';
+
+export function AdminDashboard({ 
+  plans, 
+  onLogout,
+  onUpdatePlans
+}: { 
+  plans: WorkoutPlan[]; 
+  onLogout: () => void;
+  onUpdatePlans: (plans: WorkoutPlan[]) => void;
+}) {
+  const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
+  const [reasoning, setReasoning] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (plan: WorkoutPlan) => {
+    setEditingPlan(JSON.parse(JSON.stringify(plan)));
+    setReasoning("");
+  };
+
+  const handleSave = async () => {
+    if (!editingPlan) return;
+    setSaving(true);
+    try {
+      // Simulate/Trigger the Genkit flow review
+      const reviewResult = await editAiGeneratedPlan({
+        planId: editingPlan.id,
+        editedPlan: editingPlan,
+        reasoning: reasoning || "Manuelle Optimierung durch Admin"
+      });
+
+      if (reviewResult.success) {
+        const updatedPlans = plans.map(p => p.id === editingPlan.id ? editingPlan : p);
+        onUpdatePlans(updatedPlans);
+        setEditingPlan(null);
+        toast({ title: "Plan aktualisiert", description: reviewResult.message });
+      } else {
+        toast({ variant: "destructive", title: "Review Fehlgeschlagen", description: reviewResult.message });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Fehler", description: "Speichern fehlgeschlagen." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <header className="bg-white border-b sticky top-0 z-30">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <Shield className="w-5 h-5 text-primary" />
+            </div>
+            <h1 className="font-headline font-bold text-xl">Admin Oversight</h1>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onLogout}><LogOut className="w-5 h-5" /></Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {!editingPlan ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" /> Aktive Nutzer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">1</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-accent" /> Generierte Pläne
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{plans.length}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-primary text-primary-foreground">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4" /> Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">Safe</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-headline font-bold">Trainingspläne verwalten</h2>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Suchen..." className="pl-9 w-64 bg-white" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {plans.map(plan => (
+                  <Card key={plan.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-lg">{plan.title}</h3>
+                          <Badge variant="outline">User ID: {plan.userId}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{plan.description}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => startEdit(plan)}>
+                          <Edit3 className="w-4 h-4 mr-2" /> Bearbeiten
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {plans.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
+                    Keine Pläne zur Review vorhanden.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-headline font-bold">Plan Editor</h2>
+              <Button variant="outline" onClick={() => setEditingPlan(null)}>Abbrechen</Button>
+            </div>
+
+            <Card>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label>Titel des Plans</Label>
+                  <Input 
+                    value={editingPlan.title} 
+                    onChange={e => setEditingPlan({...editingPlan, title: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Beschreibung</Label>
+                  <Textarea 
+                    value={editingPlan.description} 
+                    onChange={e => setEditingPlan({...editingPlan, description: e.target.value})}
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-headline font-bold">Übungen pro Tag</h3>
+                  {editingPlan.dailyWorkouts.map((dw, dwIdx) => (
+                    <div key={dwIdx} className="p-4 border rounded-xl bg-muted/20 space-y-4">
+                      <Input 
+                        value={dw.dayName} 
+                        onChange={e => {
+                          const updated = [...editingPlan.dailyWorkouts];
+                          updated[dwIdx].dayName = e.target.value;
+                          setEditingPlan({...editingPlan, dailyWorkouts: updated});
+                        }}
+                        className="font-bold border-none bg-transparent"
+                      />
+                      {dw.exercises.map((ex, exIdx) => (
+                        <div key={exIdx} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3 bg-white rounded-lg shadow-sm">
+                          <div className="md:col-span-2">
+                            <Label className="text-[10px] uppercase">Name</Label>
+                            <Input 
+                              value={ex.name} 
+                              onChange={e => {
+                                const updated = [...editingPlan.dailyWorkouts];
+                                updated[dwIdx].exercises[exIdx].name = e.target.value;
+                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] uppercase">Sets</Label>
+                            <Input 
+                              type="number"
+                              value={ex.sets} 
+                              onChange={e => {
+                                const updated = [...editingPlan.dailyWorkouts];
+                                updated[dwIdx].exercises[exIdx].sets = parseInt(e.target.value);
+                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] uppercase">Reps/Dur</Label>
+                            <Input 
+                              value={ex.repsOrDuration} 
+                              onChange={e => {
+                                const updated = [...editingPlan.dailyWorkouts];
+                                updated[dwIdx].exercises[exIdx].repsOrDuration = e.target.value;
+                                setEditingPlan({...editingPlan, dailyWorkouts: updated});
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2 pt-6 border-t">
+                  <Label className="text-primary font-bold">Warum änderst du diesen Plan? (KI Review Context)</Label>
+                  <Textarea 
+                    placeholder="Erkläre kurz deine Änderungen..." 
+                    value={reasoning}
+                    onChange={e => setReasoning(e.target.value)}
+                  />
+                </div>
+
+                <Button 
+                  className="w-full h-12 bg-primary text-primary-foreground font-bold text-lg" 
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? "Review läuft..." : "Änderungen via KI Review validieren"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
