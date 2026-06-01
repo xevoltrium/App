@@ -4,12 +4,9 @@
 import { useMemo } from 'react';
 import { doc, setDoc, updateDoc, deleteDoc, collection, query, orderBy } from 'firebase/firestore';
 import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
   signOut, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInAnonymously
 } from 'firebase/auth';
 import { useUser, useFirestore, useAuth, useDoc, useCollection } from '@/firebase';
 import { UserProfile, WorkoutPlan } from '@/lib/types';
@@ -19,43 +16,37 @@ export function useVigourStore() {
   const db = useFirestore();
   const auth = useAuth();
 
-  // Profile Doc
   const profileRef = useMemo(() => 
     (db && authUser) ? doc(db, 'users', authUser.uid) : null
   , [db, authUser]);
   
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(profileRef as any);
 
-  // Plans Collection
   const plansQuery = useMemo(() => 
     (db && authUser) ? query(collection(db, 'users', authUser.uid, 'plans'), orderBy('createdAt', 'desc')) : null
   , [db, authUser]);
 
   const { data: plans, loading: plansLoading } = useCollection<WorkoutPlan>(plansQuery as any);
 
-  const checkAuth = () => {
-    if (!auth) throw new Error("Firebase Auth ist nicht verfügbar. Bitte prüfe deine API-Konfiguration.");
-  };
-
-  const loginWithGoogle = async () => {
-    checkAuth();
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth!, provider);
-  };
-
-  const loginWithEmail = async (email: string, pass: string) => {
-    checkAuth();
-    await signInWithEmailAndPassword(auth!, email, pass);
-  };
-
-  const registerWithEmail = async (email: string, pass: string) => {
-    checkAuth();
-    await createUserWithEmailAndPassword(auth!, email, pass);
-  };
-
-  const loginAsGuest = async () => {
-    checkAuth();
-    await signInAnonymously(auth!);
+  const loginWithNickname = async (nickname: string, pass: string) => {
+    if (!auth) throw new Error("Firebase ist noch nicht bereit.");
+    const email = `${nickname.toLowerCase().trim()}@vigourai.local`;
+    
+    try {
+      // Try login first
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error: any) {
+      // If user doesn't exist, register them
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, pass);
+        } catch (regError: any) {
+          throw new Error("Login fehlgeschlagen. Überprüfe dein Passwort oder wähle einen anderen Nickname.");
+        }
+      } else {
+        throw error;
+      }
+    }
   };
 
   const logout = async () => {
@@ -115,10 +106,7 @@ export function useVigourStore() {
     updateUser,
     savePlan,
     deletePlan,
-    loginWithGoogle,
-    loginWithEmail,
-    registerWithEmail,
-    loginAsGuest,
+    loginWithNickname,
     logout,
     markWorkoutComplete
   };

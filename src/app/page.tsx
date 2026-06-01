@@ -7,12 +7,11 @@ import { OnboardingForm } from '@/components/OnboardingForm';
 import { UserDashboard } from '@/components/UserDashboard';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { VigourLogo } from '@/components/VigourLogo';
-import { Loader2, LogIn, Mail, UserPlus, UserRound } from 'lucide-react';
+import { Loader2, KeyRound, User } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 
 export default function Home() {
@@ -22,44 +21,24 @@ export default function Home() {
     plans, 
     loading, 
     saveUser, 
-    savePlan, 
     logout, 
-    loginWithGoogle,
-    loginWithEmail,
-    registerWithEmail,
-    loginAsGuest,
-    markWorkoutComplete 
+    loginWithNickname,
   } = useVigourStore();
 
-  const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [authActionLoading, setAuthActionLoading] = useState(false);
 
-  const handleEmailAuth = async (type: 'login' | 'register') => {
-    if (!email || !password) {
-      toast({ variant: "destructive", title: "Fehler", description: "Bitte E-Mail und Passwort eingeben." });
+  const handleLogin = async () => {
+    if (!nickname || !password) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte Nickname und Passwort eingeben." });
       return;
     }
     setAuthActionLoading(true);
     try {
-      if (type === 'login') {
-        await loginWithEmail(email, password);
-      } else {
-        await registerWithEmail(email, password);
-      }
+      await loginWithNickname(nickname, password);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Auth Fehler", description: error.message });
-    } finally {
-      setAuthActionLoading(false);
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setAuthActionLoading(true);
-    try {
-      await loginAsGuest();
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Fehler", description: error.message });
+      toast({ variant: "destructive", title: "Fehler", description: error.message || "Login fehlgeschlagen." });
     } finally {
       setAuthActionLoading(false);
     }
@@ -73,7 +52,6 @@ export default function Home() {
     );
   }
 
-  // If not logged in at all, show custom login screen
   if (!authUser) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -82,97 +60,46 @@ export default function Home() {
         <Card className="w-full max-w-md shadow-xl border-none">
           <CardHeader>
             <CardTitle className="text-2xl font-headline font-bold text-center">Willkommen</CardTitle>
-            <CardDescription className="text-center">Wähle deine bevorzugte Art der Anmeldung</CardDescription>
+            <CardDescription className="text-center">Einfach Nickname und Passwort wählen</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Registrieren</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login" className="space-y-4">
-                <div className="space-y-2">
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    type="email" 
-                    placeholder="E-Mail" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
+                    placeholder="Dein Nickname" 
+                    className="pl-10"
+                    value={nickname} 
+                    onChange={e => setNickname(e.target.value)} 
                   />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
                     type="password" 
-                    placeholder="Passwort" 
+                    placeholder="Dein Passwort" 
+                    className="pl-10"
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
                   />
                 </div>
-                <Button 
-                  onClick={() => handleEmailAuth('login')} 
-                  className="w-full gap-2" 
-                  disabled={authActionLoading}
-                >
-                  {authActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                  Mit E-Mail anmelden
-                </Button>
-              </TabsContent>
-
-              <TabsContent value="register" className="space-y-4">
-                <div className="space-y-2">
-                  <Input 
-                    type="email" 
-                    placeholder="E-Mail" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
-                  />
-                  <Input 
-                    type="password" 
-                    placeholder="Passwort" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
-                  />
-                </div>
-                <Button 
-                  onClick={() => handleEmailAuth('register')} 
-                  variant="secondary"
-                  className="w-full gap-2"
-                  disabled={authActionLoading}
-                >
-                  {authActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                  Konto erstellen
-                </Button>
-              </TabsContent>
-            </Tabs>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Oder</span>
               </div>
             </div>
-
-            <div className="grid gap-3">
-              <Button 
-                variant="outline" 
-                onClick={loginWithGoogle} 
-                className="w-full gap-2"
-                disabled={authActionLoading}
-              >
-                <LogIn className="w-4 h-4" /> Mit Google
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={handleGuestLogin} 
-                className="w-full gap-2"
-                disabled={authActionLoading}
-              >
-                <UserRound className="w-4 h-4" /> Als Gast fortfahren
-              </Button>
-            </div>
+            
+            <Button 
+              onClick={handleLogin} 
+              className="w-full h-12 text-lg font-bold" 
+              disabled={authActionLoading}
+            >
+              {authActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Loslegen"}
+            </Button>
           </CardContent>
-          <CardFooter className="text-center text-xs text-muted-foreground">
-            Deine Daten werden sicher in der Cloud gespeichert.
+          <CardFooter className="text-center text-xs text-muted-foreground flex flex-col gap-2">
+            <p>Kein Konto? Gib einfach einen neuen Namen ein.</p>
+            <p>Deine Daten werden sicher in der Cloud gespeichert.</p>
           </CardFooter>
         </Card>
         <Toaster />
@@ -180,7 +107,6 @@ export default function Home() {
     );
   }
 
-  // If logged in but no profile (onboarding)
   if (!user || !user.isBoarded) {
     return (
       <div className="min-h-screen bg-background relative overflow-hidden">
@@ -198,7 +124,6 @@ export default function Home() {
     );
   }
 
-  // Handle Admin view
   if (user.role === 'admin') {
     return (
       <>
@@ -212,7 +137,6 @@ export default function Home() {
     );
   }
 
-  // Regular User Dashboard
   return (
     <>
       <UserDashboard 
