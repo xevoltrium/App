@@ -32,7 +32,8 @@ import {
   ShieldAlert,
   Trash2,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Download
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useVigourStore } from '@/hooks/use-vigour-store';
@@ -50,7 +51,7 @@ export function UserDashboard({
   onMarkComplete: (planId: string, idx: number) => void;
   onLogout: () => void;
 }) {
-  const { updateUser, logout } = useVigourStore();
+  const { updateUser, logout, savePlan } = useVigourStore();
   const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'plan' | 'chat' | 'profile' | 'settings'>('plan');
   const [specialRequest, setSpecialRequest] = useState(user.specialPreferences || "");
@@ -96,11 +97,11 @@ export function UserDashboard({
             instructions: ex.instructions
           }))
         })),
-        userId: 'current-user',
+        userId: 'current-user', // Will be overridden in store by auth ID
         createdAt: Date.now()
       };
 
-      onSavePlans([newPlan, ...plans]);
+      await savePlan(newPlan);
       updateUser({ specialPreferences: finalRequest });
       toast({ title: "Plan erstellt!", description: "Dein neuer KI-Plan ist bereit." });
     } catch (error) {
@@ -109,6 +110,38 @@ export function UserDashboard({
     } finally {
       setGenerating(false);
     }
+  };
+
+  const downloadPlan = () => {
+    const activePlan = plans[0];
+    if (!activePlan) return;
+    
+    let text = `VigourAI - Dein KI-Trainingsplan\n`;
+    text += `==================================\n`;
+    text += `Titel: ${activePlan.title}\n`;
+    text += `Beschreibung: ${activePlan.description}\n\n`;
+    
+    activePlan.dailyWorkouts.forEach(dw => {
+      text += `--- ${dw.dayName} (${dw.focus}) ---\n`;
+      dw.exercises.forEach(ex => {
+        text += `- ${ex.name}: ${ex.sets} Sätze, ${ex.repsOrDuration}\n`;
+        text += `  Methode: ${ex.trainingMethod}\n`;
+        text += `  Anleitung: ${ex.instructions}\n\n`;
+      });
+      text += `\n`;
+    });
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `VigourAI_${activePlan.title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({ title: "Download gestartet", description: "Dein Plan wurde als Textdatei gespeichert." });
   };
 
   const handleSendChat = async () => {
@@ -203,6 +236,14 @@ export function UserDashboard({
                   <p className="text-xs text-muted-foreground text-center">
                     {completedCount} von {activePlan.dailyWorkouts.length} Einheiten geschafft
                   </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={downloadPlan}
+                    className="w-full mt-2 gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Plan exportieren
+                  </Button>
                 </div>
               )}
             </section>
@@ -437,7 +478,7 @@ export function UserDashboard({
               <div className="p-4 bg-muted/30 border border-dashed rounded-xl flex items-start gap-3">
                 <ShieldAlert className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  VigourAI speichert deine Daten aktuell nur lokal in deinem Browser. Wenn du den Browser-Cache leerst, gehen deine Trainingspläne verloren.
+                  Deine Daten werden sicher in Firebase Cloud gespeichert. Du kannst von jedem Gerät darauf zugreifen.
                 </p>
               </div>
             </div>
@@ -478,4 +519,3 @@ export function UserDashboard({
     </div>
   );
 }
-    
